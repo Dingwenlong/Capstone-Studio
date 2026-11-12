@@ -1,0 +1,4 @@
+portal.{$BASE_DOMAIN}, admin.{$BASE_DOMAIN}, library.{$BASE_DOMAIN}, lab.{$BASE_DOMAIN} {
+    encode zstd gzip
+    reverse_proxy app:3410
+}

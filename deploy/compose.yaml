@@ -1,0 +1,47 @@
+name: demo-classroom
+services:
+  database:
+    image: postgres:16-bookworm
+    environment:
+      POSTGRES_USER: classroom
+      POSTGRES_DB: classroom
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD}
+    volumes: [classroom_data:/var/lib/postgresql/data]
+    networks: [data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U classroom -d classroom"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+  app:
+    build: ..
+    environment:
+      BASE_DOMAIN: ${BASE_DOMAIN:?set BASE_DOMAIN}
+      DATABASE_URL: postgresql://classroom:${DB_PASSWORD}@database:5432/classroom
+    depends_on:
+      database: {condition: service_healthy}
+    networks: [web, data]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3410/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+  proxy:
+    image: caddy:2-alpine
+    environment:
+      BASE_DOMAIN: ${BASE_DOMAIN}
+    ports: ["80:80","443:443"]
+    volumes: ["./Caddyfile:/etc/caddy/Caddyfile:ro", "certs:/data", "proxy_config:/config"]
+    networks: [web]
+    depends_on:
+      app: {condition: service_healthy}
+    restart: unless-stopped
+networks:
+  web: {}
+  data: {internal: true}
+volumes:
+  classroom_data: {}
+  certs: {}
+  proxy_config: {}

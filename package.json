@@ -1,0 +1,42 @@
+{
+  "name": "demo-classroom",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.13" },
+  "scripts": {
+    "dev": "tsx scripts/build-demos.ts && tsx server.ts --dev",
+    "build": "tsx scripts/build-demos.ts && next build --webpack",
+    "start": "tsx server.ts",
+    "check": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
+    "data": "tsx scripts/data.ts",
+    "test:e2e": "tsx scripts/browser-qa.ts"
+  },
+  "dependencies": {
+    "@electric-sql/pglite": "^0.5.4",
+    "@tailwindcss/postcss": "^4.3.2",
+    "@trpc/client": "^11.18.0",
+    "@trpc/server": "^11.18.0",
+    "better-auth": "^1.6.23",
+    "drizzle-orm": "^0.45.2",
+    "esbuild": "^0.28.2",
+    "lucide-react": "^0.468.0",
+    "next": "^16.2.10",
+    "postgres": "^3.4.9",
+    "proper-lockfile": "^4.1.2",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwindcss": "^4.3.2",
+    "tsx": "^4.20.3",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.61.1",
+    "@types/node": "^24.0.0",
+    "@types/proper-lockfile": "^4.1.4",
+    "@types/react": "^19.0.2",
+    "@types/react-dom": "^19.0.2",
+    "typescript": "~5.9.3"
+  }
+}
