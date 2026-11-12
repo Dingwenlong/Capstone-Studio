@@ -3,6 +3,7 @@ node_modules
 .demo-build
 .data
 .env*
+/classroom-export.json
 .git
 *.tsbuildinfo
 test-results
