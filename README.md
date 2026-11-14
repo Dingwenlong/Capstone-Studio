@@ -46,6 +46,8 @@ node --import tsx scripts/data.ts export <复核用的新文件>
 
 部署模板位于 `deploy/`。服务器需要 Docker Engine 和 Docker Compose 插件。在项目根目录的受限 `.env` 文件中设置 `BASE_DOMAIN`（根域名及四个子域共用的后缀）和 `DB_PASSWORD`（随机 32 字节的十六进制字符串）。后续命令均从项目根目录执行，并通过 `--env-file .env` 显式读取该配置。
 
+本项目公网域名设置为 `BASE_DOMAIN=education.sc.cn`。备案完成后，学生访问 `https://student.education.sc.cn/`，教师访问 `https://teacher.education.sc.cn/login`，图书与实验室使用 `library.education.sc.cn` 和 `lab.education.sc.cn`。根域 `education.sc.cn` 跳转至学生门户。应用内部仍使用 `portal`、`admin` 区分学生和教师角色，本机入口继续使用 `portal.classroom.localhost` 与 `admin.classroom.localhost`。
+
 默认从 Docker Hub 拉取 Node.js、PostgreSQL 和 Caddy 官方镜像。服务器访问 Docker Hub 超时时，可在同一 `.env` 中加入 Docker 官方 ECR Public 路径，然后执行后面的构建及启动命令。[Docker 官方镜像目录](https://gallery.ecr.aws/docker/)
 
 ```dotenv
@@ -91,7 +93,7 @@ docker compose --env-file .env -f deploy/compose.yaml -f deploy/prepare.yaml ps
 
 ### 备案完成后启用站点
 
-在 DNS 控制台为根域 `@` 和 `portal`、`admin`、`library`、`lab` 四个子域配置服务器公网地址。逐个核对 A 记录和已有 AAAA 记录，确保它们均指向实际提供服务的地址。确认 `BASE_DOMAIN` 与 DNS 一致，服务器出站可访问证书服务，安全组及主机防火墙允许 TCP 80、443，且这两个端口可供 Caddy 绑定。
+在 DNS 控制台为根域 `@` 和 `student`、`teacher`、`library`、`lab` 四个子域配置服务器公网地址。逐个核对 A 记录和已有 AAAA 记录，确保它们均指向实际提供服务的地址。确认 `BASE_DOMAIN` 与 DNS 一致，服务器出站可访问证书服务，安全组及主机防火墙允许 TCP 80、443，且这两个端口可供 Caddy 绑定。
 
 首次启用前用独立容器验证 Caddy 候选配置。该验证命令完成后容器退出。
 

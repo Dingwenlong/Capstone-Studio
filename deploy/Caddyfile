@@ -1,8 +1,8 @@
 {$BASE_DOMAIN} {
-    redir https://portal.{$BASE_DOMAIN}{uri} permanent
+    redir https://student.{$BASE_DOMAIN}{uri} permanent
 }
 
-portal.{$BASE_DOMAIN}, admin.{$BASE_DOMAIN}, library.{$BASE_DOMAIN}, lab.{$BASE_DOMAIN} {
+student.{$BASE_DOMAIN}, teacher.{$BASE_DOMAIN}, library.{$BASE_DOMAIN}, lab.{$BASE_DOMAIN} {
     encode zstd gzip
     reverse_proxy app:3410
 }

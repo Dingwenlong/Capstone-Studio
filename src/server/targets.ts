@@ -37,7 +37,7 @@ export function targets(): ServiceTarget[] {
     { key: 'lab', name: '实验室预约' },
     ...extras,
   ]
-  const used = new Set(['portal', 'admin', 'localhost'])
+  const used = new Set(['portal', 'admin', 'student', 'teacher', 'localhost'])
   for (const item of list) {
     if (used.has(item.key)) throw new Error('服务清单中有重复或保留的标识')
     used.add(item.key)
