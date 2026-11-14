@@ -1,7 +1,7 @@
 name: demo-classroom
 services:
   database:
-    image: postgres:16-bookworm
+    image: ${POSTGRES_IMAGE:-postgres:16-bookworm}
     environment:
       POSTGRES_USER: classroom
       POSTGRES_DB: classroom
@@ -15,7 +15,10 @@ services:
       retries: 12
     restart: unless-stopped
   app:
-    build: ..
+    build:
+      context: ..
+      args:
+        NODE_IMAGE: ${NODE_IMAGE:-node:24-bookworm-slim}
     environment:
       BASE_DOMAIN: ${BASE_DOMAIN:?set BASE_DOMAIN}
       DATABASE_URL: postgresql://classroom:${DB_PASSWORD}@database:5432/classroom
@@ -29,7 +32,7 @@ services:
       retries: 12
     restart: unless-stopped
   proxy:
-    image: caddy:2-alpine
+    image: ${CADDY_IMAGE:-caddy:2-alpine}
     environment:
       BASE_DOMAIN: ${BASE_DOMAIN}
     ports: ["80:80","443:443"]
