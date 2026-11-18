@@ -19,16 +19,14 @@ async function login(page: Page, username: string, password: string, teacher = f
   await expect(page).toHaveURL(new RegExp(teacher ? '/admin/students$' : '/workspace$'))
 }
 
-function systemFrame(page: Page, title: string) {
-  return page.frameLocator('iframe[title="' + title + '"]')
+function gallery(page: Page, title: string) {
+  return page.getByRole('region', { name: title, exact: true })
 }
 
-async function expectDirectAccessDenied(context: BrowserContext, host: string) {
+async function expectMediaDenied(context: BrowserContext, path: string, status = 404) {
   const direct = await context.newPage()
   try {
-    const response = await direct.goto(site(host) + '/')
-    expect([401, 403]).toContain(response?.status())
-    await expect(direct.getByText(/无权访问|缺少.*权限/)).toBeVisible()
+    expect((await direct.goto(site('portal') + path))?.status()).toBe(status)
   } finally { await direct.close() }
 }
 
@@ -55,7 +53,7 @@ test('公开首页、学生登录与手机布局', async ({ page }, info) => {
   await page.screenshot({ path: info.outputPath('mobile.png') })
 })
 
-test('两个独立浏览器会话只打开获分配系统，借还和预约均能持久化', async ({ browser }, info) => {
+test('学生截图按授权隔离，切换页签保留分组并可放大查看', async ({ browser }, info) => {
   const a = await browser.newContext({ viewport: { width: 1122, height: 731 } })
   const b = await browser.newContext()
   try {
@@ -64,50 +62,36 @@ test('两个独立浏览器会话只打开获分配系统，借还和预约均�
       login(pageA, 'student-a', testPassword('TEST_A_PASSWORD')),
       login(pageB, 'student-b', testPassword('TEST_B_PASSWORD')),
     ])
-    const books = systemFrame(pageA, '图书借阅')
-    const lab = systemFrame(pageB, '实验室预约')
-    await expect(books.getByRole('table', { name: '馆藏图书' })).toBeVisible()
-    await expect(lab.getByRole('table', { name: '实验室时段' })).toBeVisible()
+    const library = gallery(pageA, '图书借阅')
+    const labB = gallery(pageB, '实验室预约')
+    await expect(library.getByRole('img', { name: 'Overview' })).toBeVisible()
+    await expect(labB.getByRole('img', { name: 'Overview' })).toBeVisible()
+    const imagePath = await library.getByRole('img', { name: 'Overview' }).getAttribute('src')
+    expect(imagePath).toMatch(/^\/media\/[a-f0-9-]+\/thumb$/)
+    await expectMediaDenied(b, imagePath!)
+    await expectMediaDenied(b, imagePath!.replace('/thumb', ''))
     const railA = pageA.getByRole('complementary')
     await expect(railA.getByRole('button', { name: '实验室预约' })).toBeVisible()
     await expect(pageB.getByRole('complementary').getByRole('button', { name: '图书借阅' })).toHaveCount(0)
-    await expectDirectAccessDenied(b, 'library')
     await pageA.screenshot({ path: info.outputPath('workspace.png') })
 
-    await books.getByRole('searchbox').fill('软件工程')
-    await books.getByRole('button', { name: '搜索' }).click()
+    await library.getByRole('group', { name: '截图分组' }).getByRole('button', { name: /Android/ }).click()
+    await library.getByRole('button', { name: '查看截图 Details' }).click()
+    const viewer = pageA.getByRole('dialog')
+    await expect(viewer.getByRole('img', { name: 'Details' })).toBeVisible()
+    await expect.poll(() => viewer.getByRole('img').evaluate(element => (element as HTMLImageElement).naturalWidth)).toBeGreaterThan(0)
+    await viewer.getByRole('button', { name: '原图', exact: true }).click()
+    await expect(viewer.getByRole('button', { name: '适应窗口', exact: true })).toBeVisible()
+    await pageA.keyboard.press('Escape')
+    await expect(viewer).toHaveCount(0)
     await railA.getByRole('button', { name: '实验室预约' }).click()
-    await expect(systemFrame(pageA, '实验室预约').getByRole('table')).toBeVisible()
+    await expect(gallery(pageA, '实验室预约').getByRole('img', { name: 'Overview' })).toBeVisible()
     await railA.getByRole('button', { name: '图书借阅' }).click()
-    await expect(books.getByRole('searchbox')).toHaveValue('软件工程')
-    await expect(books.getByRole('table', { name: '馆藏图书' }).locator('tbody tr')).toHaveCount(1)
-    const row = books.getByRole('table', { name: '馆藏图书' }).locator('tbody tr').first()
-    const title = await row.locator('td').first().innerText()
-    const before = Number(await row.locator('td').nth(2).innerText())
-    await row.getByRole('button', { name: '借阅' }).click()
-    await expect(row.locator('td').nth(2)).toHaveText(String(before - 1))
-    await pageA.reload()
-    const mine = books.getByRole('table', { name: '我的借阅' }).getByRole('row').filter({ hasText: title })
-    await expect(mine).toBeVisible()
-    await mine.getByRole('button', { name: '归还' }).click()
-    await expect(mine).toHaveCount(0)
-    await expect(books.getByRole('row').filter({ hasText: title }).locator('td').nth(2)).toHaveText(String(before))
-
-    const slot = lab.getByRole('table').locator('tbody tr').first()
-    await slot.getByRole('button', { name: '预约', exact: true }).click()
-    await expect(slot).toContainText('我的预约')
-    await railA.getByRole('button', { name: '实验室预约' }).click()
-    const classmateSlot = systemFrame(pageA, '实验室预约').getByRole('table').locator('tbody tr').first()
-    await expect(classmateSlot.getByRole('button', { name: '已约满' })).toBeDisabled()
-    await expect(classmateSlot).not.toContainText('学生 B')
-    await pageB.reload()
-    await lab.getByLabel('预约状态').selectOption('mine')
-    await expect(slot).toContainText('我的预约')
-    await slot.getByRole('button', { name: '取消预约' }).click()
-    await expect(lab.getByText('没有符合条件的时段。')).toBeVisible()
+    await expect(library.getByRole('group').getByRole('button', { name: /Android/ })).toHaveAttribute('aria-pressed', 'true')
+    await expect(library.getByRole('img', { name: 'Details' })).toBeVisible()
     await pageA.getByRole('button', { name: '退出', exact: true }).click()
     await expect(pageA).toHaveURL(/\/login$/)
-    await expectDirectAccessDenied(a, 'library')
+    await expectMediaDenied(a, imagePath!, 401)
   } finally {
     await Promise.all([a.close(), b.close()])
   }
@@ -145,11 +129,11 @@ test('教师新增账号、分配和撤回授权，学生已打开的页签随�
     await refreshAccess(page)
     const rail = page.getByRole('complementary')
     await rail.getByRole('button', { name: '图书借阅' }).click()
-    await expect(systemFrame(page, '图书借阅').getByRole('table')).toBeVisible()
+    await expect(gallery(page, '图书借阅').getByRole('img', { name: 'Overview' })).toBeVisible()
     await rail.getByRole('button', { name: '实验室预约' }).click()
-    await expect(systemFrame(page, '实验室预约').getByRole('table')).toBeVisible()
+    await expect(gallery(page, '实验室预约').getByRole('img', { name: 'Overview' })).toBeVisible()
     await page.getByRole('button', { name: '关闭实验室预约' }).click()
-    await expect(systemFrame(page, '图书借阅').getByRole('table')).toBeVisible()
+    await expect(gallery(page, '图书借阅').getByRole('img', { name: 'Overview' })).toBeVisible()
     await page.getByRole('button', { name: '收起系统列表' }).click()
     await expect(page.getByRole('button', { name: '展开系统列表' })).toBeVisible()
     await page.getByRole('button', { name: '展开系统列表' }).click()
@@ -157,23 +141,25 @@ test('教师新增账号、分配和撤回授权，学生已打开的页签随�
     await expect(page.getByRole('button', { name: '退出全屏' })).toBeVisible()
     await page.getByRole('button', { name: '退出全屏' }).click()
 
+    const oldImage = await gallery(page, '图书借阅').getByRole('img', { name: 'Overview' }).getAttribute('src')
     await admin.getByLabel('图书借阅', { exact: true }).uncheck()
     await save.click()
     await expect(admin.getByRole('status')).toContainText('已保存')
-    await expectDirectAccessDenied(student, 'library')
+    await expectMediaDenied(student, oldImage!)
     await refreshAccess(page)
-    await expect(page.locator('iframe[title="图书借阅"]')).toHaveCount(0)
+    await expect(gallery(page, '图书借阅')).toHaveCount(0)
     await expect(rail.getByRole('button', { name: '图书借阅' })).toHaveCount(0)
     await rail.getByRole('button', { name: '实验室预约' }).click()
-    await expect(systemFrame(page, '实验室预约').getByRole('table')).toBeVisible()
+    await expect(gallery(page, '实验室预约').getByRole('img', { name: 'Overview' })).toBeVisible()
 
+    const labImage = await gallery(page, '实验室预约').getByRole('img', { name: 'Overview' }).getAttribute('src')
     await admin.getByRole('link', { name: '学生账号' }).click()
     await admin.getByRole('row').filter({ hasText: username }).getByRole('button', { name: '停用' }).click()
     await admin.getByRole('dialog').getByRole('button', { name: '停用账号' }).click()
     await expect(admin.getByRole('status')).toContainText('已停用')
     await refreshAccess(page)
     await expect(page).toHaveURL(/\/login$/)
-    await expectDirectAccessDenied(student, 'lab')
+    await expectMediaDenied(student, labImage!, 401)
     await admin.getByRole('link', { name: '操作记录' }).click()
     await expect(admin.getByRole('row').filter({ hasText: username }).first()).toBeVisible()
   } finally {
@@ -183,7 +169,7 @@ test('教师新增账号、分配和撤回授权，学生已打开的页签随�
 
 test('连接中断后能从工作台重新载入系统', async ({ page, context }) => {
   await login(page, 'student-a', testPassword('TEST_A_PASSWORD'))
-  const table = systemFrame(page, '图书借阅').getByRole('table', { name: '馆藏图书' })
+  const table = gallery(page, '图书借阅').getByRole('img', { name: 'Overview' })
   await expect(table).toBeVisible()
   await context.setOffline(true)
   try {

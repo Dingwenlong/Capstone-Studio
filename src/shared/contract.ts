@@ -13,6 +13,27 @@ export interface SystemInfo {
   key: string
   name: string
   enabled: boolean
+  nameEn?: string
+  summary?: string
+  summaryEn?: string
+  repository?: string
+  platforms?: string[]
+  imageCount?: number
+  storageBytes?: number
+}
+export interface Screenshot {
+  id: string
+  systemKey: string
+  title: string
+  group: string
+  position: number
+  width: number
+  height: number
+  bytes: number
+}
+export interface Gallery {
+  system: SystemInfo
+  images: Screenshot[]
 }
 export interface Target {
   key: string
@@ -52,6 +73,7 @@ export interface Launch {
 // registerSystem({key,name}), setSystemEnabled({key,enabled}), setGrants({studentId,keys:string[]}),
 // borrow({id}), returnBook({id}), reserve({id}), cancelReservation({id}).
 export const readActions = [
+  'gallery',
   'session',
   'systems',
   'students',
@@ -63,6 +85,12 @@ export const readActions = [
   'slots',
 ] as const
 export const writeActions = [
+  'createGallery',
+  'updateGallery',
+  'addScreenshot',
+  'updateScreenshot',
+  'moveScreenshot',
+  'removeScreenshot',
   'login',
   'demoLogin',
   'logout',

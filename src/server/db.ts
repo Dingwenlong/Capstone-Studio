@@ -6,7 +6,7 @@ import { drizzle as networkDrizzle } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
 import { PGlite } from '@electric-sql/pglite'
 import lockfile from 'proper-lockfile'
-import { schemaV1 } from './schema'
+import { schemaV1, schemaV2 } from './schema'
 const exampleSchema = 'classroom_public_examples'
 
 export type Row = Record<string, unknown>
@@ -94,11 +94,17 @@ export async function openDatabase(
       await tx.rows(
         sql`CREATE TABLE IF NOT EXISTS classroom_schema (id integer PRIMARY KEY CHECK (id = 1), version integer NOT NULL)`,
       )
-      const [version] = await tx.rows(sql`SELECT version FROM classroom_schema WHERE id = 1`)
-      if (version && version.version !== 1) throw new Error('数据库版本与当前程序不兼容。')
+      const [version] = await tx.rows<{ version: number }>(
+        sql`SELECT version FROM classroom_schema WHERE id = 1`,
+      )
+      if (version && ![1, 2].includes(version.version)) throw new Error('数据库版本与当前程序不兼容。')
       if (!version) {
         for (const statement of schemaV1) await tx.rows(sql.raw(statement))
         await tx.rows(sql`INSERT INTO classroom_schema VALUES (1, 1)`)
+      }
+      if (!version || version.version === 1) {
+        for (const statement of schemaV2) await tx.rows(sql.raw(statement))
+        await tx.rows(sql`UPDATE classroom_schema SET version=2 WHERE id=1`)
       }
     })
     if (!options.example && !url) return database

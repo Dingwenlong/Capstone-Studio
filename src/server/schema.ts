@@ -50,3 +50,24 @@ export const schemaV1 = [
   )`,
   'CREATE INDEX audit_time ON audit(at)',
 ]
+
+export const schemaV2 = [
+  `CREATE TABLE system_profiles (
+    system_key text PRIMARY KEY REFERENCES systems(key) ON DELETE CASCADE,
+    name_en text NOT NULL DEFAULT '', summary text NOT NULL DEFAULT '', summary_en text NOT NULL DEFAULT '',
+    repository text NOT NULL DEFAULT '', platforms jsonb NOT NULL DEFAULT '[]'::jsonb,
+    CHECK (jsonb_typeof(platforms) = 'array')
+  )`,
+  `CREATE TABLE screenshots (
+    id text PRIMARY KEY, system_key text NOT NULL REFERENCES systems(key) ON DELETE CASCADE,
+    title text NOT NULL, group_name text NOT NULL, position integer NOT NULL CHECK (position >= 0),
+    width integer NOT NULL CHECK (width BETWEEN 1 AND 3840),
+    height integer NOT NULL CHECK (height BETWEEN 1 AND 16383),
+    CHECK (width::bigint * height <= 40000000),
+    bytes integer NOT NULL CHECK (bytes > 0), content_hash text NOT NULL,
+    body bytea NOT NULL, thumbnail bytea NOT NULL,
+    CHECK (bytes = octet_length(body) + octet_length(thumbnail)),
+    UNIQUE(system_key, content_hash),
+    UNIQUE(system_key, position) DEFERRABLE INITIALLY DEFERRED
+  )`,
+]

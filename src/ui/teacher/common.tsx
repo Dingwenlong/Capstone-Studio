@@ -8,7 +8,8 @@ import s from './Teacher.module.css'
 export type Feedback = { text: string; en?: string; error?: boolean } | null
 type Lang = 'zh-CN' | 'en'
 
-export function systemName(item: { key: string; name: string }, lang: Lang) {
+export function systemName(item: { key: string; name: string; nameEn?: string }, lang: Lang) {
+  if (lang === 'en' && item.nameEn) return item.nameEn
   return ['library', 'lab'].includes(item.key) ? displayLabel(item.name, lang) : item.name
 }
 

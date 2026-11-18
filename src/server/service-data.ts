@@ -2,6 +2,7 @@ import { randomBytes, randomUUID, createHash } from 'node:crypto'
 import { sql } from 'drizzle-orm'
 import { hashPassword } from 'better-auth/crypto'
 import { z } from 'zod'
+import sharp from 'sharp'
 import type { Database, Reader, Row } from './db'
 
 const id = z.string().min(1).max(120)
@@ -52,7 +53,42 @@ const dataTables = z
     ),
   })
   .strict()
-type Table = keyof z.infer<typeof dataTables>
+const profileRow = z
+  .object({
+    system_key: id,
+    name_en: z.string().max(120),
+    summary: z.string().max(2000),
+    summary_en: z.string().max(4000),
+    repository: z.string().max(500),
+    platforms: z.array(z.string().min(1).max(80)).max(20),
+  })
+  .strict()
+const base64 = z
+  .string()
+  .min(4)
+  .refine((value) => Buffer.from(value, 'base64').toString('base64') === value)
+const screenshotRow = z
+  .object({
+    id,
+    system_key: id,
+    title: z.string().min(1).max(120),
+    group_name: z.string().min(1).max(80),
+    position: z.number().int().nonnegative(),
+    width: z.number().int().min(1).max(3840),
+    height: z.number().int().min(1).max(16383),
+    bytes: z.number().int().positive(),
+    content_hash: z.string().regex(/^[a-f0-9]{64}$/),
+    body: base64,
+    thumbnail: base64,
+  })
+  .strict()
+const currentTables = dataTables
+  .extend({
+    system_profiles: z.array(profileRow),
+    screenshots: z.array(screenshotRow),
+  })
+  .strict()
+type Table = keyof z.infer<typeof currentTables>
 const sortBy: Record<Table, string[]> = {
   people: ['id'],
   systems: ['key'],
@@ -62,15 +98,27 @@ const sortBy: Record<Table, string[]> = {
   slots: ['id'],
   reservations: ['slot_id'],
   audit: ['id'],
+  system_profiles: ['system_key'],
+  screenshots: ['system_key', 'position'],
 }
 const tableNames = Object.keys(sortBy) as Table[]
-const manifest = z
+const legacyManifest = z
   .object({
     format: z.literal('demo-classroom-v1'),
     sha256: z.string().regex(/^[a-f0-9]{64}$/),
     tables: dataTables,
   })
   .strict()
+const manifest = z.discriminatedUnion('format', [
+  legacyManifest,
+  z
+    .object({
+      format: z.literal('demo-classroom-v2'),
+      sha256: z.string().regex(/^[a-f0-9]{64}$/),
+      tables: currentTables,
+    })
+    .strict(),
+])
 
 async function lockEmpty(db: Reader) {
   const tables = tableNames.map(sql.identifier)
@@ -130,16 +178,24 @@ export async function exportData(db: Database) {
     }
     // Normalize timestamps identically for both PostgreSQL drivers and the portable JSON file.
     for (const entry of tableData.audit) entry.at = new Date(entry.at as string).toISOString()
-    const tables = dataTables.parse(tableData)
-    return { format: 'demo-classroom-v1' as const, sha256: checksum(tables), tables }
+    for (const entry of tableData.screenshots) {
+      entry.body = Buffer.from(entry.body as Uint8Array).toString('base64')
+      entry.thumbnail = Buffer.from(entry.thumbnail as Uint8Array).toString('base64')
+    }
+    const tables = currentTables.parse(tableData)
+    return { format: 'demo-classroom-v2' as const, sha256: checksum(tables), tables }
   })
 }
 
 export async function importData(db: Database, value: unknown) {
   const document = manifest.safeParse(value)
   if (!document.success) throw new Error('迁移文件格式不正确或包含未支持的数据。')
-  const { tables, sha256 } = document.data
-  if (checksum(tables) !== sha256) throw new Error('迁移文件校验失败。')
+  const { sha256 } = document.data
+  if (checksum(document.data.tables) !== sha256) throw new Error('迁移文件校验失败。')
+  const tables =
+    document.data.format === 'demo-classroom-v1'
+      ? { ...document.data.tables, system_profiles: [], screenshots: [] }
+      : document.data.tables
   if (!tables.people.some((row) => row.active && row.role === 'teacher'))
     throw new Error('迁移文件缺少启用的教师账号。')
   const students = new Set(tables.people.filter((row) => row.role === 'student').map((row) => row.id))
@@ -148,13 +204,51 @@ export async function importData(db: Database, value: unknown) {
     [...tables.loans, ...tables.reservations].some((row) => !students.has(row.person_id))
   )
     throw new Error('迁移数据含无效的学生引用。')
+  for (const profile of tables.system_profiles) {
+    if (profile.repository) {
+      const repository = new URL(profile.repository)
+      if (repository.protocol !== 'https:' || repository.username || repository.password)
+        throw new Error('迁移数据含无效的仓库地址。')
+    }
+  }
+  for (const image of tables.screenshots) {
+    const body = Buffer.from(image.body, 'base64')
+    const thumb = Buffer.from(image.thumbnail, 'base64')
+    if (
+      body.length + thumb.length !== image.bytes ||
+      createHash('sha256').update(body).digest('hex') !== image.content_hash
+    )
+      throw new Error('迁移文件的图片摘要或字节数不一致。')
+    const decoded = sharp(body, { limitInputPixels: 40_000_000, failOn: 'warning' })
+    const thumbnail = sharp(thumb, { limitInputPixels: 480 * 480, failOn: 'warning' })
+    const originalInfo = await decoded.metadata()
+    const thumbnailInfo = await thumbnail.metadata()
+    if (
+      originalInfo.format !== 'webp' ||
+      thumbnailInfo.format !== 'webp' ||
+      originalInfo.width !== image.width ||
+      originalInfo.height !== image.height ||
+      (originalInfo.pages ?? 1) > 1 ||
+      (thumbnailInfo.pages ?? 1) > 1 ||
+      (thumbnailInfo.width ?? 481) > 480 ||
+      (thumbnailInfo.height ?? 481) > 480
+    )
+      throw new Error('迁移文件包含无效图片。')
+    await decoded.stats()
+    await thumbnail.stats()
+  }
   return db.transaction(async (tx) => {
     await lockEmpty(tx)
     for (const table of tableNames) {
       for (const row of tables[table]) {
         const entries = Object.entries(row)
         const columns = entries.map(([key]) => sql.identifier(key))
-        const values = entries.map(([, val]) => sql`${val}`)
+        const values = entries.map(([key, val]) => {
+          if (table === 'screenshots' && (key === 'body' || key === 'thumbnail'))
+            return sql`${Buffer.from(val as string, 'base64')}`
+          if (table === 'system_profiles' && key === 'platforms') return sql`${JSON.stringify(val)}::jsonb`
+          return sql`${val}`
+        })
         await tx.rows(
           sql`INSERT INTO ${sql.identifier(table)} (${sql.join(columns, sql`, `)}) VALUES (${sql.join(values, sql`, `)})`,
         )
@@ -164,6 +258,9 @@ export async function importData(db: Database, value: unknown) {
       sql`SELECT b.id FROM books b JOIN loans l ON l.book_id=b.id GROUP BY b.id HAVING sum(l.quantity)>b.copies LIMIT 1`,
     )
     if (excess.length) throw new Error('迁移数据的借阅量超出图书库存。')
+    const invalidOrder = await tx.rows(sql`SELECT system_key FROM screenshots GROUP BY system_key
+      HAVING count(*)>200 OR min(position)<>0 OR max(position)<>count(*)-1 LIMIT 1`)
+    if (invalidOrder.length) throw new Error('迁移截图数量或排序无效。')
     return { sha256, counts: Object.fromEntries(tableNames.map((key) => [key, tables[key].length])) }
   })
 }

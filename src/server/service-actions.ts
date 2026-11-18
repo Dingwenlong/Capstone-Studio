@@ -5,6 +5,7 @@ import type { Reader } from './db'
 import type { User, Student, SystemInfo, Book, Slot, Audit } from '../shared/contract'
 import { availableTargets, protectedExampleStudent, type Realm } from './service-examples'
 import { bool, fail, password, record, requireStudent, string, username, type Input } from './service-helpers'
+import { gallery, galleryProfiles } from './service-gallery'
 
 export async function readAction(
   db: Reader,
@@ -14,12 +15,12 @@ export async function readAction(
   input: Input,
   realm: Realm,
 ) {
+  if (action === 'gallery') return gallery(db, host, user, string(input.systemKey), realm)
   if (host === 'portal' && action === 'systems') {
     const systems =
       await db.rows<SystemInfo>(sql`SELECT s.key,s.name,s.enabled FROM systems s JOIN grants g ON g.system_key=s.key
       WHERE g.student_id=${user.id} AND s.enabled ORDER BY s.name,s.key`)
-    const installed = new Set(availableTargets(realm).map((target) => target.key))
-    return systems.filter((system) => installed.has(system.key))
+    return (await galleryProfiles(db, systems)).map(({repository: _repository, ...system}) => system)
   }
   if (host === 'library' && action === 'books') {
     return db.rows<Book>(sql`SELECT b.id,b.title,b.location,(b.copies-coalesce(sum(l.quantity),0))::int AS available,
@@ -43,7 +44,7 @@ export async function readAction(
       )
     }
     case 'catalog':
-      return db.rows<SystemInfo>(sql`SELECT key,name,enabled FROM systems ORDER BY name,key`)
+      return galleryProfiles(db, await db.rows<SystemInfo>(sql`SELECT key,name,enabled FROM systems ORDER BY name,key`))
     case 'targets':
       return availableTargets(realm).map(({ key, name }) => ({ key, name }))
     case 'grants': {

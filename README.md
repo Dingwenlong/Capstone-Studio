@@ -1,14 +1,14 @@
-# 毕设演示室
+# 程序研习录
 
-学生从 [演示首页](http://portal.classroom.localhost:3410/) 登录，在一个工作台里打开获准系统。老师使用独立的 [教师管理入口](http://admin.classroom.localhost:3410/login) 分配账号和系统。
+学生从 [学习首页](http://portal.classroom.localhost:3410/) 登录，在工作台页签中浏览老师分配的系统截图。每个系统可按客户端、管理端、小程序、桌面或自定义分组展示缩略图，点击后放大查看。老师使用独立的 [教师管理入口](http://admin.classroom.localhost:3410/login) 管理学生、系统资料、截图和授权。新增相册使用同一组学生、教师入口及数据库。
 
-首次进入默认显示英文。学生首页和两个登录页均可直接选择「简体中文」或「English」。语言选择会保留至下次访问，并用于学生工作台、教师后台和两个内置系统。外接系统会收到所选语言的 `Accept-Language` 请求头，其内容取决于该系统提供的翻译。
+首次进入默认显示英文。学生首页和两个登录页均可直接选择「简体中文」或「English」。语言选择会保留至下次访问，并用于工作台、教师后台、图片预览和操作反馈。系统资料支持中文及英文名称、简介，自定义截图名称和分组沿用老师填写的内容。
 
-每个登录页有两个免输密码的示例按钮。示例学生 A 初始可进入图书借阅与实验室预约，示例学生 B 初始只可进入实验室预约。两位示例教师管理同一套示例账号、授权和课堂数据。示例操作与正式师生数据隔离；正式授课请使用老师分配的账号和密码。示例登录也使用一次性请求编号。首次使用时自动初始化示例数据，本机使用独立 PGlite 目录，PostgreSQL 使用独立 schema。
+每个登录页有两个免输密码的示例按钮。示例学生 A 初始可查看图书借阅与实验室预约相册，示例学生 B 初始只可查看实验室预约相册。两位示例教师共用同一套示例账号、授权和截图。示例操作保存在独立空间，正式授课使用老师分配的账号和密码。示例登录也使用一次性请求编号。首次使用时自动初始化示例数据，本机使用独立 PGlite 目录，PostgreSQL 使用独立 schema。新相册显示实际截图数量，等待老师上传后即可浏览。
 
 ## 本机使用
 
-使用 Node.js 24、PowerShell 和 Chrome 或 Edge。默认服务仅监听回环地址，四个 `.classroom.localhost` 主机名可直接在当前电脑浏览器打开。
+使用 Node.js 24、PowerShell 和 Chrome 或 Edge。默认服务仅监听回环地址，学生和教师的 `.classroom.localhost` 主机名可直接在当前电脑浏览器打开。
 
 新安装时在项目目录依次运行以下命令。已经初始化的安装直接执行最后一行。
 
@@ -23,15 +23,63 @@
 
 | 账号 | 首次分配 | 课堂操作 |
 | --- | --- | --- |
-| `teacher` | 教师后台 | 创建学生、重置密码、停用账号、登记或上下架系统、修改授权、查看近 150 条操作记录 |
-| `student-a` | 图书借阅、实验室预约 | 查询并借还图书，打开另一个页签预约时段，再切回之前的查询 |
-| `student-b` | 实验室预约 | 查看共享时段和预约结果；可取消自己的预约 |
+| `teacher` | 教师后台 | 创建学生、重置密码、停用账号、编辑系统资料、管理截图、上下架系统、修改授权、查看近 150 条操作记录 |
+| `student-a` | 图书借阅、实验室预约 | 按分组查看已上传截图，切换页签、放大及前后翻图 |
+| `student-b` | 实验室预约 | 查看自己获授权的系统截图 |
 
-用两个独立浏览器配置文件或普通窗口加无痕窗口分别登录 A、B。先让 A 预约一个时段，再由 B 刷新预约页即可看到占用状态。老师可在“系统授权”选择学生、勾选系统并保存；保存后旧页签的下一次请求会重新校验。工作台在重新获得焦点和定时刷新时也会更新目录。
+老师在“演示系统”导航下进入“系统资料”，新增系统名称和标识，按需填写英文名称、简介、平台标签及项目地址。打开“管理截图”，填写分组、选择图片并上传，可逐张改名、调整分组、在组内前移或后移、删除，也可批量重命名已有分组。项目地址供教师维护来源使用。然后在“系统授权”选择学生、勾选系统并保存。
+
+用两个独立浏览器配置文件或普通窗口加无痕窗口分别登录 A、B，核对两人的可见目录。缩略图与完整尺寸图片均通过当前入口的鉴权接口读取，服务端每次检查登录、系统上架状态和学生授权。下架或撤权后，后续图片读取会被拒绝，工作台在重新获得焦点及定时回读时移除相应页签。
+
+## 上传限制与容量
+
+- 接受静态 PNG、JPEG、WebP，单个上传文件最大 8 MiB，解码像素上限为 4000 万。每个系统最多保存 200 张截图，相同系统中的重复图片会被拒绝。
+- 服务器按图片方向处理并保存 WebP 展示图，保持比例缩至宽 3840、高 16383 像素以内，同时生成最长边 480 像素的缩略图。放大查看使用保存后的展示图。
+- 教师管理显示的占用为展示图和缩略图实际字节数之和。数据库磁盘空间还包含表、索引、事务日志等开销，容量按上传后的统计与数据库实际占用评估。
+- 多张图片逐张提交，每张有独立结果。已知失败可单独重试，提交结果未确认时先刷新列表核对。服务器最多同时处理两次图片上传，繁忙请求会提示稍后重试。
+- 公开示例空间共用最多 100 张截图、20 MiB 图片字节额度，额度累计包含两位示例教师上传的内容。
+
+## 批量导入系统资料
+
+可用本地 JSON 清单批量创建相册。下面为通用格式示例，`repository` 是可选的 HTTPS 来源地址。
+
+```json
+{
+  "projects": [
+    {
+      "key": "campus-library",
+      "name": "校园图书管理",
+      "nameEn": "Campus Library",
+      "summary": "图书目录、借阅与后台管理的界面参考。",
+      "summaryEn": "Interface references for catalog browsing, loans and administration.",
+      "repository": "https://example.com/source/campus-library",
+      "platforms": ["Client", "Admin", "Mini program"]
+    }
+  ]
+}
+```
+
+`key` 使用 1 至 32 位小写字母、数字和短横线，以字母开头。必填字段为 `key`、`name`，其余字段可省略。名称上限为 80 字符，英文名称 120 字符，中文简介 2000 字符，英文简介 4000 字符。单次清单最多 500 个项目，标识必须唯一。
+
+本机先停止服务，随后执行导入。命令复用 `DATA_DIR` 或 `DATABASE_URL`，整批在事务中提交，输出新增与跳过的标识。已有标识会被跳过，其资料可在教师后台编辑。新建相册初始上架、截图数量为零，老师上传图片并分配账号后学生即可查看。
+
+```powershell
+.\classroom.ps1 stop
+node --import tsx scripts/gallery-import.ts <本地项目清单.json>
+.\classroom.ps1 start
+```
+
+服务器可把清单只读挂载到一次性应用容器，使用同一命令完成资料导入。
+
+```sh
+docker compose --env-file .env -f deploy/compose.yaml -f deploy/prepare.yaml run --rm --no-deps -v "$PWD/projects.json:/import/projects.json:ro" app node --import tsx scripts/gallery-import.ts /import/projects.json
+```
 
 ## 存储、迁移与恢复
 
-本机默认数据库目录为 `.data/classroom`，可通过 `DATA_DIR` 指定独立目录。网关独占本地数据库；内置的两个演示页面运行在各自的子进程中。停止本机服务，等进程退出，再执行离线迁移。备份含密码哈希和课堂记录，应保存到受限目录。
+本机默认数据库目录为 `.data/classroom`，可通过 `DATA_DIR` 指定独立目录。服务器使用 PostgreSQL，Compose 数据卷 `classroom_data` 保存数据库。系统资料、授权、截图元数据、WebP 展示图及缩略图均随数据库持久化。应用启动会在事务中将旧版结构升级到 v2。
+
+本地数据库由应用独占。停止本机服务，等进程退出，再导出正式数据。导出文件包含账号密码哈希、授权、图片和审计记录，应保存到受限目录。当前导出格式为 `demo-classroom-v2`，图片以 Base64 编码，因此文件还包含约三分之一的图片编码开销及 JSON 元数据。
 
 ```powershell
 node --import tsx scripts/data.ts export <新备份文件>
@@ -40,13 +88,17 @@ node --import tsx scripts/data.ts import <备份文件>
 node --import tsx scripts/data.ts export <复核用的新文件>
 ```
 
-比对两次导出显示的 SHA-256。导入会验证格式、摘要、引用关系和库存数量，并整体提交到空库。恢复保留账号、密码哈希、系统、授权、业务数据和审计记录；师生重新登录获取新会话。设置 `DATABASE_URL` 时，同一套命令连接 PostgreSQL。结构迁移在打开数据库时执行。
+同为 v2 格式时，比对恢复前后导出的 SHA-256。导入会验证总摘要、图片摘要与字节数、实际图片尺寸和格式、截图排序及关联记录，再整体提交到空库。恢复保留账号、密码哈希、系统资料、授权、截图、旧业务数据和审计记录，师生重新登录获取新会话。设置 `DATABASE_URL` 时，同一套命令连接 PostgreSQL。
+
+导入也支持旧 `demo-classroom-v1` 备份，升级后的相册等待上传截图。旧备份再次导出时使用 v2 格式，摘要会随格式变化，应同时核对导入输出的各表记录数量。恢复目标选择独立空库或空目录，保留来源库直至恢复结果核对完成。
+
+`scripts/data.ts` 备份正式空间。示例数据在本机的 `DATA_DIR` 后缀 `-examples` 目录中，PostgreSQL 下位于 `classroom_public_examples` schema。需要保留示例空间时，应一并纳入数据库或目录级备份。
 
 ## 公网部署
 
-部署模板位于 `deploy/`。服务器需要 Docker Engine 和 Docker Compose 插件。在项目根目录的受限 `.env` 文件中设置 `BASE_DOMAIN`（根域名及四个子域共用的后缀）和 `DB_PASSWORD`（随机 32 字节的十六进制字符串）。后续命令均从项目根目录执行，并通过 `--env-file .env` 显式读取该配置。
+部署模板位于 `deploy/`。服务器需要 Docker Engine 和 Docker Compose 插件。在项目根目录的受限 `.env` 文件中设置 `BASE_DOMAIN`（根域名和子域共用的后缀）及 `DB_PASSWORD`（随机 32 字节的十六进制字符串）。后续命令均从项目根目录执行，并通过 `--env-file .env` 显式读取该配置。
 
-本项目公网域名设置为 `BASE_DOMAIN=education.sc.cn`。备案完成后，学生访问 `https://student.education.sc.cn/`，教师访问 `https://teacher.education.sc.cn/login`，图书与实验室使用 `library.education.sc.cn` 和 `lab.education.sc.cn`。根域 `education.sc.cn` 跳转至学生门户。应用内部仍使用 `portal`、`admin` 区分学生和教师角色，本机入口继续使用 `portal.classroom.localhost` 与 `admin.classroom.localhost`。
+本项目公网域名设置为 `BASE_DOMAIN=education.sc.cn`。备案完成后，学生访问 `https://student.education.sc.cn/`，教师访问 `https://teacher.education.sc.cn/login`。根域 `education.sc.cn` 跳转至学生门户。应用内部使用 `portal`、`admin` 区分角色，本机入口继续使用 `portal.classroom.localhost` 与 `admin.classroom.localhost`。当前 Caddy 模板还保留 `library.education.sc.cn` 和 `lab.education.sc.cn` 的旧演示兼容入口。
 
 默认从 Docker Hub 拉取 Node.js、PostgreSQL 和 Caddy 官方镜像。服务器访问 Docker Hub 超时时，可在同一 `.env` 中加入 Docker 官方 ECR Public 路径，然后执行后面的构建及启动命令。[Docker 官方镜像目录](https://gallery.ecr.aws/docker/)
 
@@ -110,19 +162,25 @@ docker compose --env-file .env -f deploy/compose.yaml up -d --wait proxy
 docker compose --env-file .env -f deploy/compose.yaml ps
 ```
 
-Caddy 为根域和四个子域申请 HTTPS 证书。根域会跳转到学生门户，并保留路径和查询参数。逐个访问四个子域核对证书，检查根域跳转，再用普通学生和教师完成登录、系统授权、借还和预约验证。此时对外发布 80、443，PostgreSQL 和应用端口仅在容器网络内使用。
+Caddy 为根域和模板内四个子域申请 HTTPS 证书。根域会跳转到学生门户，并保留路径和查询参数。核对证书与根域跳转，再用普通学生和教师完成登录、上传截图、分配授权、放大查看和撤权验证。此时对外发布 80、443，PostgreSQL 和应用端口仅在容器网络内使用。
 
-## 接入自己的演示系统
+## 可选的旧演示兼容
 
-1. 让真实系统只接受网关所在私有网络的连接。为每个系统准备独立子域，将其添加到 Caddyfile 和 DNS。子系统的嵌入策略应允许学生门户作为父页面。
-2. 在网关运行环境通过 `TARGETS_FILE` 指向只读 JSON 清单。容器部署需要挂载这个文件。键名使用小写英文、数字和短横线。下面是内网服务的示例。
+当前学生页签展示截图图库。应用默认只启动门户与教师服务，旧图书、实验室子进程在有效的 `launch` 票据兑换时按需启动。既有会话、启动票据和旧业务数据保留兼容能力。
 
-   ```json
-   [{"key":"inventory","name":"库存管理","upstream":"http://inventory:8080"}]
-   ```
+维护既有动态演示集成时，可继续通过 `TARGETS_FILE` 提供私网 HTTP(S) 上游，配置对应的独立子域、DNS 和 Caddy 路由，并使系统嵌入策略允许学生门户。后台新增系统使用资料表单，动态客户端由已有接入代码调用 `launch` 完成换票。
 
-3. 重启网关后，在教师后台“演示系统”选择清单内的目标、登记名称，再到“系统授权”分配。网关会在转发每个请求前检查学生、原登录会话和目标系统的当前授权。内部服务从网关注入的 `X-Classroom-User-Id` 获取身份。
-4. 首版接入支持同源相对地址的 HTTP 页面、静态资源和 JSON/表单接口，单次上行正文上限 2 MiB。子系统使用网关提供的身份，写入端自行签发并在业务事务中核销一次性请求编号。接入前验证重复提交、超时重试和撤权。请先适配依赖独立登录 Cookie、跨域跳转或 WebSocket 的系统。
+```json
+[
+  {
+    "key": "inventory",
+    "name": "库存管理",
+    "upstream": "http://inventory:8080"
+  }
+]
+```
+
+上游应只接受网关私网连接，并使用网关注入的 `X-Classroom-User-Id` 获取身份。网关逐次检查登录会话、系统上架状态和授权，兼容同源相对地址的 HTTP 页面、静态资源、JSON 与表单接口，单次上行正文上限为 2 MiB。旧系统自行处理写操作的一次性请求编号，依赖独立登录 Cookie、跨域跳转或 WebSocket 的集成需要对应适配。截图图库通过同源图片接口直接读取数据库中的展示图和缩略图。
 
 ## 验证与开发
 
@@ -136,6 +194,6 @@ npm run test:e2e
 
 Windows 下可直接执行 `.\classroom.ps1 check`、`.\classroom.ps1 test` 和 `.\classroom.ps1 build`。如本机已安装 Chrome，PowerShell 可设置 `$env:CHROMIUM_CHANNEL='chrome'`，随后运行 `.\classroom.ps1 browser`。脚本直接调用 Node，可以在 Windows 环境变量较长时使用。测试运行器创建临时数据库，使用随机账户密码，启动独立服务进程，完成后正常关闭。可设置 `CLASSROOM_TEST_PORT` 和 `CLASSROOM_QA_OUTPUT` 选择测试端口及截图位置。存储测试默认使用 PGlite，`CLASSROOM_TEST_DATABASE_URL` 可指向专用的空 PostgreSQL 测试库。
 
-开发运行 `npm run dev`，生产构建后运行 `npm start`。学生门户、教师后台使用 Next.js Pages Router、React 和 Tailwind。tRPC 处理查询和写入，Drizzle 连接 PGlite 或 PostgreSQL，Better Auth 的密码组件处理哈希和校验。会话、一次性启动票据及请求编号由网关与数据库管理。
+开发运行 `npm run dev`，生产构建后运行 `npm start`。学生门户、教师后台使用 Next.js Pages Router、React 和 Tailwind。tRPC 处理查询和写入，Drizzle 连接 PGlite 或 PostgreSQL，Sharp 生成截图展示图和缩略图，Better Auth 的密码组件处理哈希和校验。会话、请求编号和旧版启动票据由网关与数据库管理。浏览器验收覆盖图库上传、分组、排序、删除、学生访问隔离与撤权。
 
-登录和写操作先领取绑定主机、当前会话与操作的 `X-Request-ID`，有效期 5 分钟。登录前绑定匿名会话；借还、预约和管理操作在同一个事务里核销编号并写入业务数据。页签启动票据绑定目标系统，有效期 30 秒，通过 POST 兑换。学生退出、停用、重置密码或被撤权后，关联会话按对应范围失效。
+登录和写操作先领取绑定主机、当前会话与操作的 `X-Request-ID`，有效期 5 分钟。登录前绑定匿名会话，图片上传和资料管理在同一个事务里核销编号并写入数据。旧版启动票据绑定目标系统，有效期 30 秒，通过 POST 兑换。学生退出、停用、重置密码或被撤权后，关联会话按对应范围失效。图片接口通过会话和逐系统授权校验，并返回 `private, no-store` 缓存策略。

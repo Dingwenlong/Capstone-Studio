@@ -7,6 +7,23 @@ import { dirname, join, resolve } from 'node:path'
 import { sql } from 'drizzle-orm'
 import { openDatabase } from '../src/server/db'
 import { initialize } from '../src/server/service-data'
+import { initializeExamples } from '../src/server/service-examples'
+import { galleryMutation } from '../src/server/service-gallery'
+import type { User } from '../src/shared/contract'
+import sharp from 'sharp'
+
+async function seedScreenshots(db: Awaited<ReturnType<typeof openDatabase>>, realm: 'classroom' | 'example') {
+  const [teacher] = await db.rows<User>(sql`SELECT id,username,name,role FROM people WHERE role='teacher' ORDER BY username LIMIT 1`)
+  for (const systemKey of ['library','lab']) {
+    for (const [index, group] of ['Web','Android'].entries()) {
+      const data = await sharp({create:{width:index ? 480 : 1280,height:index ? 900 : 720,channels:3,
+        background:index ? '#cadde2' : '#a9c27d'}}).png().toBuffer()
+      await db.transaction(tx=>galleryMutation(tx,teacher,'addScreenshot',{
+        systemKey,group,title:index ? 'Details' : 'Overview',data,
+      },realm))
+    }
+  }
+}
 
 async function runBrowserTests(environment: NodeJS.ProcessEnv, credentials: Record<string, string>) {
   const server = fork(resolve('server.ts'), [], {
@@ -83,12 +100,18 @@ try {
   let accounts: Awaited<ReturnType<typeof initialize>>
   try {
     accounts = await initialize(db)
+    await seedScreenshots(db, 'classroom')
     const [student] = await db.rows<{ id: string }>(sql`SELECT id FROM people WHERE username = 'student-b'`)
     if (!student) throw new Error('找不到测试学生。')
     expectedStudent = student.id
   } finally {
     await db.close()
   }
+  const examples = await openDatabase({directory:directory+'-examples',example:true})
+  try {
+    await initializeExamples(examples)
+    await seedScreenshots(examples,'example')
+  } finally { await examples.close() }
   const listening = once(fixture, 'listening')
   fixture.listen(0, '127.0.0.1')
   await listening

@@ -17,7 +17,7 @@ export const getServerSideProps: GetServerSideProps<Props> = async ({ req, resol
 }
 export default function Screen({ host, path }: Props) {
   const {t} = useLanguage()
-  const title = host === 'admin' ? t('教学管理','Teacher admin') : t('毕设演示室','Capstone Demo Studio')
+  const title = host === 'admin' ? t('教学管理','Teacher admin') : t('程序研习录','Capstone Demo Studio')
   let body
   if (path === '/login') body = <Login teacher={host === 'admin'} />
   else if (host === 'admin') body = <Admin section={path.split('/')[2] || 'students'} />

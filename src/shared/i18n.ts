@@ -45,6 +45,23 @@ export function displayLabel(text: string, lang: Language): string {
 }
 
 const errors: Record<string, string> = {
+  '此账号无权查看系统截图。': 'This account cannot view system screenshots.',
+  '图片不存在或无权查看。': 'This image is unavailable or access has been revoked.',
+  '找不到此图片。': 'Image not found.',
+  '系统名称、说明、仓库地址或分组格式不正确。': 'Check the system name, description, repository URL, and groups.',
+  '请选择 8 MiB 以内的 PNG、JPEG 或 WebP 图片。': 'Choose a PNG, JPEG, or WebP image of up to 8 MiB.',
+  '请上传静态 PNG、JPEG 或 WebP 图片。': 'Upload a still PNG, JPEG, or WebP image.',
+  '图片无法解码，或超过 4000 万像素。': 'The image cannot be decoded or exceeds 40 megapixels.',
+  '只有教师可管理系统截图。': 'Only teachers can manage screenshots.',
+  '该系统标识已存在。': 'This system key is already in use.',
+  '该系统已包含相同图片。': 'This system already contains this image.',
+  '每个系统最多保存 200 张截图，请先删除旧图。': 'Each system can hold up to 200 screenshots. Remove an old image first.',
+  '示例空间最多保存 100 张截图和 20 MiB 图片，请先删除旧图。': 'The demo workspace can hold up to 100 screenshots and 20 MiB of images. Remove an old image first.',
+  '未知截图操作。': 'Unknown screenshot action.',
+  '找不到该图片。': 'Image not found.',
+  '排序方向无效。': 'Invalid sorting direction.',
+  '图片文件不得超过 8 MiB。': 'Each image must be 8 MiB or smaller.',
+  '图片正在处理中，请稍后重试。': 'Images are being processed. Try again in a moment.',
   '内置示例学生使用按钮登录。可对新建的演示学生停用或重置密码。':
     'Built-in demo students sign in with a button. You can disable or reset passwords for students you create in the demo.',
   '请从学生或教师登录页使用示例账号。': 'Use a demo account from the student or teacher sign-in page.',

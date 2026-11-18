@@ -78,7 +78,7 @@ export function Brand({ teacher = false, href = '/' }: { teacher?: boolean; href
   return (
     <a className={s.brand} href={href}>
       <span className={s.mark} aria-hidden="true" />
-      {teacher ? t('教学管理', 'Teacher admin') : t('毕设演示室', 'Capstone Studio')}
+      {teacher ? t('教学管理', 'Teacher admin') : t('程序研习录', 'Capstone Studio')}
     </a>
   )
 }

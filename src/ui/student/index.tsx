@@ -1,17 +1,14 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { Launch, SystemInfo, User } from '../../shared/contract'
-import { displayLabel, localizeMessage, type Language } from '../../shared/i18n'
+import type { SystemInfo, User } from '../../shared/contract'
+import { displayLabel, localizeMessage } from '../../shared/i18n'
 import { read, write } from '../client'
 import { LanguageSwitch, useLanguage } from '../i18n'
 import { Brand, errorText, Icon } from './Chrome'
+import Gallery, { galleryName } from '../gallery/Gallery'
 import s from './student.module.css'
 export { Demo } from './Demo'
-
-function systemName(system: SystemInfo, lang: Language) {
-  return system.key === 'library' || system.key === 'lab' ? displayLabel(system.name, lang) : system.name
-}
 
 export function Landing() {
   const { t } = useLanguage()
@@ -41,126 +38,13 @@ export function Landing() {
       </header>
       <div className={s.heroCopy}>
         <h1>{t('毕业设计演示空间', 'Capstone Demo Studio')}</h1>
-        <p>{t('登录后，打开老师为你分配的参考系统。', 'Sign in to explore the systems your teacher has shared with you.')}</p>
+        <p>{t('登录后，浏览老师为你分配的项目截图。', 'Sign in to explore the project screenshots your teacher has shared with you.')}</p>
         <a className={s.primaryLink} href={href}>
           {t('进入工作台', 'Open workspace')}
           <Icon name="arrow" size={23} />
         </a>
       </div>
     </main>
-  )
-}
-
-function LaunchFrame({ info, visible }: { info: SystemInfo; visible: boolean }) {
-  const { t, lang } = useLanguage()
-  const name = systemName(info, lang)
-  const frame = useRef<HTMLIFrameElement>(null)
-  // The browser assigns the browsing context's name when it creates the iframe.
-  const [frameName] = useState(() => 'classroom-' + crypto.randomUUID())
-  const [attempt, setAttempt] = useState(0)
-  const [error, setError] = useState('')
-  const [loading, setLoading] = useState(true)
-
-  useEffect(() => {
-    const iframe = frame.current
-    if (!iframe) return
-    let live = true
-    let submitted = false
-    let origin = ''
-    setLoading(true)
-    setError('')
-    function loaded() {
-      if (!submitted) return
-      window.clearTimeout(timer)
-      setLoading(false)
-    }
-    function message(event: MessageEvent) {
-      if (
-        event.source === iframe?.contentWindow &&
-        event.origin === origin &&
-        event.data?.type === 'classroom:unavailable'
-      ) {
-        setError('系统暂时无法访问，请刷新授权后重试。')
-      }
-    }
-    const timer = window.setTimeout(() => {
-      setError('系统响应超时，请稍后重试。')
-      setLoading(false)
-    }, 20000)
-    iframe.addEventListener('load', loaded)
-    window.addEventListener('message', message)
-    write<Launch>('launch', { systemKey: info.key })
-      .then(({ url, ticket }) => {
-        if (!live) return
-        origin = new URL(url, window.location.href).origin
-        const form = document.createElement('form')
-        const field = document.createElement('input')
-        form.method = 'post'
-        form.action = url
-        form.target = frameName
-        field.type = 'hidden'
-        field.name = 'ticket'
-        field.value = ticket
-        form.append(field)
-        document.body.append(form)
-        submitted = true
-        try {
-          form.submit()
-        } finally {
-          form.remove()
-        }
-      })
-      .catch((reason) => {
-        if (!live) return
-        window.clearTimeout(timer)
-        setLoading(false)
-        setError(errorText(reason))
-      })
-    return () => {
-      live = false
-      window.clearTimeout(timer)
-      iframe.removeEventListener('load', loaded)
-      window.removeEventListener('message', message)
-    }
-  }, [info.key, attempt, frameName])
-
-  return (
-    <section style={{ height: '100%', position: 'relative' }} hidden={!visible} aria-label={name}>
-      {error ? (
-        <div className={s.blank} role="status">
-          <h2>{t('系统暂不可用', 'System unavailable')}</h2>
-          <p>{localizeMessage(error, lang)}</p>
-          <button
-            className={s.darkButton}
-            onClick={() => {
-              setError('')
-              setAttempt((count) => count + 1)
-            }}
-          >
-            {t('重新打开', 'Reopen system')}
-          </button>
-        </div>
-      ) : null}
-      {loading && !error && (
-        <div
-          role="status"
-          className={s.blank}
-          style={{ position: 'absolute', inset: 0, background: '#f9fafb' }}
-        >
-          {t('正在打开' + name + '…', 'Opening ' + name + '…')}
-        </div>
-      )}
-      <iframe
-        title={name}
-        name={frameName}
-        className={s.frame}
-        hidden={!!error}
-        ref={frame}
-        referrerPolicy="no-referrer"
-        sandbox="allow-scripts allow-forms allow-same-origin"
-        allow="fullscreen"
-      />
-    </section>
   )
 }
 
@@ -306,7 +190,7 @@ export function Workspace() {
 
   const nameOf = (key: string) => {
     const system = systems.find((item) => item.key === key)
-    return system ? systemName(system, lang) : key
+    return system ? galleryName(system, lang) : key
   }
   const accountName = user && ['student-a', 'student-b', 'demo-student-a', 'demo-student-b'].includes(user.username)
     ? displayLabel(user.name, lang) : user?.name
@@ -339,8 +223,8 @@ export function Workspace() {
               <button
                 key={system.key}
                 className={s.sideItem}
-                title={systemName(system, lang)}
-                aria-label={systemName(system, lang)}
+                title={galleryName(system, lang)}
+                aria-label={galleryName(system, lang)}
                 aria-current={tabs.active === system.key}
                 onClick={() => select(system.key)}
               >
@@ -348,7 +232,7 @@ export function Workspace() {
                   name={system.key === 'library' ? 'book' : system.key === 'lab' ? 'calendar' : 'grid'}
                   size={22}
                 />
-                {!collapsed && <span>{systemName(system, lang)}</span>}
+                {!collapsed && <span>{galleryName(system, lang)}</span>}
               </button>
             ))}
           </nav>
@@ -404,15 +288,15 @@ export function Workspace() {
             ) : !tabs.active ? (
               <div className={s.blank}>
                 <h2>{systems.length ? t('选择要查看的系统', 'Choose a system') : t('暂无已分配的系统', 'No systems assigned yet')}</h2>
-                <p>{systems.length ? t('从我的系统中打开一个演示。', 'Open a demo from My systems.') : t('老师完成分配后，系统会显示在这里。', 'Systems will appear here when your teacher assigns them.')}</p>
+                <p>{systems.length ? t('从我的系统中打开一个项目相册。', 'Open a project gallery from My systems.') : t('老师完成分配后，系统会显示在这里。', 'Systems will appear here when your teacher assigns them.')}</p>
               </div>
             ) : (
               systems
                 .filter((system) => tabs.visited.includes(system.key))
                 .map((system) => (
-                  <LaunchFrame
+                  <Gallery
                     key={user?.id + ':' + system.key}
-                    info={system}
+                    system={system}
                     visible={system.key === tabs.active}
                   />
                 ))

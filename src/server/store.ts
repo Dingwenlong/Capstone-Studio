@@ -18,6 +18,7 @@ import {
   type Input,
 } from './service-helpers'
 import { availableTargets, exampleId, initializeExamples, type Realm } from './service-examples'
+import { galleryMutation, readScreenshot } from './service-gallery'
 
 type RequestContext = Context
 const globalDb = globalThis as typeof globalThis & {
@@ -80,6 +81,13 @@ export async function inspect(token: string | undefined, host: string): Promise<
   return realm === 'example' && user ? { ...user, demo: true } : user
 }
 export const authorize = inspect
+
+export async function screenshot(ctx: RequestContext, id: string, thumbnail: boolean) {
+  const realm = tokenRealm(ctx.token)
+  const db = await getStore(realm)
+  const user = await requireUser(db, ctx)
+  return readScreenshot(db, ctx.host, user, id, thumbnail, realm)
+}
 
 async function prune(db: Reader) {
   await db.rows(sql`DELETE FROM nonces WHERE expires_at<=now()`)
@@ -215,7 +223,11 @@ export async function mutate(
         VALUES(${digest(ticket)},${digest(ctx.token!)},${key},now()+interval '30 seconds')`)
       return { ticket, systemKey: key }
     }
-    if (ctx.host === 'admin' && user.role === 'teacher') return adminAction(tx, user, action, body, realm)
+    if (ctx.host === 'admin' && user.role === 'teacher') {
+      if (['createGallery','updateGallery','addScreenshot','updateScreenshot','moveScreenshot','removeScreenshot'].includes(action))
+        return galleryMutation(tx, user, action, body, realm)
+      return adminAction(tx, user, action, body, realm)
+    }
     return demoAction(tx, ctx.host, user, action, body)
   })
 }

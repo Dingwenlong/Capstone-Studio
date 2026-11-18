@@ -10,6 +10,7 @@ import { startDemos, stopDemos, demoEndpoint } from './src/server/demos'
 import { bodyBytes, forward, message, redirect } from './src/server/gateway'
 import { localControl } from './src/server/local-control'
 import { languageFromCookie } from './src/shared/i18n'
+import { galleryHttp } from './src/server/gallery-http'
 
 const dev = process.argv.includes('--dev')
 const bind = process.env.BIND_ADDRESS || '127.0.0.1'
@@ -17,7 +18,6 @@ if (isTls && !process.env.DATABASE_URL) throw new Error('公网模式需要配�
 const app = next({ dev, hostname: bind, port, webpack: true })
 const serveNext = app.getRequestHandler()
 await getStore()
-await startDemos()
 await app.prepare()
 const rpc = createHTTPHandler({
   router,
@@ -57,7 +57,9 @@ const server = createServer(async (req, res) => {
         (demo ? "; worker-src 'none'" : ''),
     )
     if (!demo) res.setHeader('X-Frame-Options', 'DENY')
-    const path = new URL(req.url || '/', origin(host)).pathname
+    const requestedUrl = new URL(req.url || '/', origin(host))
+    const path = requestedUrl.pathname
+    if (await galleryHttp(host, req, res, requestedUrl)) return
     if (demo && path === '/launch') {
       if (
         req.method !== 'POST' ||
@@ -67,6 +69,7 @@ const server = createServer(async (req, res) => {
         return message(res, 403, '请从学生工作台打开系统。')
       const form = new URLSearchParams((await bodyBytes(req, 1024)).toString())
       const { token } = await redeem(host, form.get('ticket') || '')
+      if ((host === 'library' || host === 'lab') && !demoEndpoint(host)) await startDemos()
       setSession(res, token)
       return redirect(res, '/')
     }
@@ -109,7 +112,7 @@ const server = createServer(async (req, res) => {
   }
 })
 server.headersTimeout = 15000
-server.requestTimeout = 30000
+server.requestTimeout = 120000
 if (dev)
   server.on('upgrade', (req, socket, head) => {
     const host = hostKey(req.headers.host)

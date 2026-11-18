@@ -7,6 +7,12 @@ import { Loading, matches, SearchBox, useRemote } from './common'
 import s from './Teacher.module.css'
 
 const names: Record<string, [string, string]> = {
+  createGallery: ['建立系统相册', 'Create gallery'],
+  updateGallery: ['修改系统资料', 'Update system details'],
+  addScreenshot: ['上传截图', 'Upload screenshot'],
+  updateScreenshot: ['修改截图信息', 'Edit screenshot'],
+  moveScreenshot: ['调整截图顺序', 'Reorder screenshot'],
+  removeScreenshot: ['删除截图', 'Delete screenshot'],
   login: ['登录', 'Sign in'],
   demoLogin: ['示例登录', 'Demo sign-in'],
   logout: ['退出', 'Sign out'],
