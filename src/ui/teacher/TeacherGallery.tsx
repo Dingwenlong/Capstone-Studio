@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { Badge, Button, NativeSelect, TextInput, UnstyledButton } from '@mantine/core'
 import { ArrowLeft, ArrowDown, ArrowUp, ImagePlus, Pencil, RefreshCw, Trash2 } from 'lucide-react'
 import type { Gallery, Screenshot, SystemInfo } from '../../shared/contract'
 import { localizeMessage } from '../../shared/i18n'
@@ -166,49 +167,48 @@ export default function TeacherGallery({ systemKey, revision, onBack, onEditProf
   }
 
   return <section className={g.manager}>
-    <button className={s.textButton} disabled={busy} onClick={onBack}><ArrowLeft size={18} aria-hidden />{t('返回系统列表', 'Back to systems')}</button>
+    <Button variant="subtle" size="compact-sm" disabled={busy} onClick={onBack} leftSection={<ArrowLeft size={18} aria-hidden />}>{t('返回系统列表', 'Back to systems')}</Button>
     {error || !data ? <Loading error={error} retry={reload} /> : <>
       <header className={g.managerHeading}>
         <div><h1>{galleryName(data.system, lang)}</h1><p className={g.summary}>
           {lang === 'en' && data.system.summaryEn ? data.system.summaryEn : data.system.summary}
         </p></div>
-        <button className={s.secondary} disabled={busy} onClick={() => onEditProfile(data.system)}><Pencil size={16} aria-hidden />{t('编辑资料', 'Edit details')}</button>
+        <Button variant="outline" disabled={busy} onClick={() => onEditProfile(data.system)} leftSection={<Pencil size={16} aria-hidden />}>{t('编辑资料', 'Edit details')}</Button>
       </header>
       <div className={g.meta}>
         <span>{t('共 ', '')}{data.images.length}{t(' 张截图', ' screenshots')}</span>
         <span>{formatSize(data.system.storageBytes ?? data.images.reduce((sum, image) => sum + image.bytes, 0))}</span>
-        <span className={data.system.enabled ? s.online : s.offline}>{data.system.enabled ? t('已上架', 'Published') : t('已下架', 'Unpublished')}</span>
+        <Badge tt="none" fw={500} variant="light" color={data.system.enabled ? 'pine' : 'gray'} className={data.system.enabled ? s.online : s.offline}>{data.system.enabled ? t('已上架', 'Published') : t('已下架', 'Unpublished')}</Badge>
       </div>
       <Notice feedback={feedback} />
       <section className={g.uploadBox} aria-label={t('上传截图', 'Upload screenshots')}>
         <div className={g.uploadControls}>
-          <label className={s.field}>{t('上传到分组', 'Upload to group')}
-            <input required maxLength={80} list="gallery-upload-groups" value={uploadGroup} disabled={busy} onChange={event => setUploadGroup(event.target.value)} />
-          </label>
+          <TextInput className={g.uploadGroup} label={t('上传到分组', 'Upload to group')}
+            required maxLength={80} list="gallery-upload-groups" value={uploadGroup} disabled={busy}
+            onChange={event => setUploadGroup(event.currentTarget.value)} />
           <datalist id="gallery-upload-groups">{uploadSuggestions.map(value => <option key={value} value={value} label={groupLabel(value, lang)} />)}</datalist>
           <input ref={fileInput} className={g.fileInput} type="file" multiple accept="image/png,image/jpeg,image/webp"
             aria-label={t('选择截图文件', 'Choose screenshot files')} disabled={busy} onChange={event => enqueue(event.target.files)} />
-          <button className={s.secondary} disabled={busy} onClick={() => fileInput.current?.click()}><ImagePlus size={17} aria-hidden />{t('选择图片', 'Choose images')}</button>
-          <button className={s.primary} disabled={busy || !pending.length || !uploadGroup.trim()} onClick={() => void sendUploads(pending)}>
+          <Button variant="outline" disabled={busy} onClick={() => fileInput.current?.click()} leftSection={<ImagePlus size={17} aria-hidden />}>{t('选择图片', 'Choose images')}</Button>
+          <Button disabled={busy || !pending.length || !uploadGroup.trim()} onClick={() => void sendUploads(pending)}>
             {busy ? t('处理中…', 'Working…') : t('上传所选图片', 'Upload selected images')}
-          </button>
+          </Button>
         </div>
         <p className={g.help}>{t('支持 PNG、JPEG、WebP，每张最大 8 MiB。上传后可以修改名称和分组。', 'PNG, JPEG and WebP, up to 8 MiB per image. You can edit names and groups after uploading.')}</p>
         {queue.length > 0 && <ul className={g.uploadQueue} aria-live="polite">{queue.map(item => <li key={item.id}>
           <div><strong>{item.file.name}</strong><span className={item.status === 'done' ? g.uploadSuccess : item.status === 'failed' || item.status === 'unknown' || item.status === 'invalid' ? g.uploadFailure : g.help}>{uploadStatus(item)}</span></div>
           <div className={g.queueActions}>
-            {item.status === 'failed' && <button className={s.textButton} disabled={busy} onClick={() => void sendUploads([item])}>{t('重试', 'Retry')}</button>}
-            <button className={s.textButton} disabled={busy} onClick={() => setQueue(current => current.filter(value => value.id !== item.id))}>{t('移除记录', 'Dismiss')}</button>
+            {item.status === 'failed' && <Button variant="subtle" size="compact-sm" disabled={busy} onClick={() => void sendUploads([item])}>{t('重试', 'Retry')}</Button>}
+            <Button variant="subtle" size="compact-sm" disabled={busy} onClick={() => setQueue(current => current.filter(value => value.id !== item.id))}>{t('移除记录', 'Dismiss')}</Button>
           </div>
         </li>)}</ul>}
       </section>
       <div className={g.galleryTools}>
-        <label className={s.field}>{t('查看分组', 'View group')}<select value={group} disabled={busy} onChange={event => setGroup(event.target.value)}>
-          <option value="">{t('全部截图', 'All screenshots')}</option>
-          {groups.map(value => <option key={value} value={value}>{groupLabel(value, lang)}</option>)}
-        </select></label>
-        {group && <button className={s.textButton} disabled={busy} onClick={() => setEdit({ kind: 'group', group, images: [...images], updated: 0 })}>{t('重命名分组', 'Rename group')}</button>}
-        <button className={s.secondary} disabled={busy} onClick={reload}><RefreshCw size={16} aria-hidden />{t('刷新列表', 'Refresh gallery')}</button>
+        <NativeSelect className={g.groupFilter} label={t('查看分组', 'View group')}
+          value={group} disabled={busy} onChange={event => setGroup(event.currentTarget.value)}
+          data={[{ value: '', label: t('全部截图', 'All screenshots') }, ...groups.map(value => ({ value, label: groupLabel(value, lang) }))]} />
+        {group && <Button variant="subtle" size="compact-sm" disabled={busy} onClick={() => setEdit({ kind: 'group', group, images: [...images], updated: 0 })}>{t('重命名分组', 'Rename group')}</Button>}
+        <Button variant="outline" disabled={busy} onClick={reload} leftSection={<RefreshCw size={16} aria-hidden />}>{t('刷新列表', 'Refresh gallery')}</Button>
       </div>
       {!images.length ? <div className={g.empty}>
         <h2>{t('等待补充截图', 'Screenshots to be added')}</h2>
@@ -218,15 +218,15 @@ export default function TeacherGallery({ systemKey, revision, onBack, onEditProf
           const peers = data.images.filter(value => value.group === image.group)
           const position = peers.findIndex(value => value.id === image.id)
           return <article key={image.id} className={g.imageRow}>
-            <button className={g.thumbnail} onClick={() => setSelectedId(image.id)} aria-label={t('查看截图 ', 'View screenshot ') + image.title}>
+            <UnstyledButton className={g.thumbnail} onClick={() => setSelectedId(image.id)} aria-label={t('查看截图 ', 'View screenshot ') + image.title}>
               <img src={screenshotUrl(image, true)} alt={image.title} loading="lazy" />
-            </button>
+            </UnstyledButton>
             <div className={g.imageDetails}><h3>{image.title}</h3><p>{groupLabel(image.group, lang)} · {image.width} × {image.height} · {formatSize(image.bytes)}</p>
               <div className={g.imageActions}>
-                <button className={s.textButton} disabled={busy} onClick={() => setEdit({ kind: 'image', image })}><Pencil size={15} aria-hidden />{t('编辑', 'Edit')}</button>
-                <button className={s.textButton} disabled={busy || position === 0} onClick={() => void move(image, 'up')} aria-label={t('前移 ', 'Move up ') + image.title}><ArrowUp size={16} aria-hidden />{t('前移', 'Move up')}</button>
-                <button className={s.textButton} disabled={busy || position === peers.length - 1} onClick={() => void move(image, 'down')} aria-label={t('后移 ', 'Move down ') + image.title}><ArrowDown size={16} aria-hidden />{t('后移', 'Move down')}</button>
-                <button className={s.textButton} disabled={busy} onClick={() => setEdit({ kind: 'remove', image })}><Trash2 size={15} aria-hidden />{t('删除', 'Delete')}</button>
+                <Button variant="subtle" size="compact-sm" disabled={busy} onClick={() => setEdit({ kind: 'image', image })} leftSection={<Pencil size={15} aria-hidden />}>{t('编辑', 'Edit')}</Button>
+                <Button variant="subtle" size="compact-sm" disabled={busy || position === 0} onClick={() => void move(image, 'up')} aria-label={t('前移 ', 'Move up ') + image.title} leftSection={<ArrowUp size={16} aria-hidden />}>{t('前移', 'Move up')}</Button>
+                <Button variant="subtle" size="compact-sm" disabled={busy || position === peers.length - 1} onClick={() => void move(image, 'down')} aria-label={t('后移 ', 'Move down ') + image.title} leftSection={<ArrowDown size={16} aria-hidden />}>{t('后移', 'Move down')}</Button>
+                <Button variant="subtle" size="compact-sm" disabled={busy} onClick={() => setEdit({ kind: 'remove', image })} leftSection={<Trash2 size={15} aria-hidden />}>{t('删除', 'Delete')}</Button>
               </div>
             </div>
           </article>
@@ -240,8 +240,8 @@ export default function TeacherGallery({ systemKey, revision, onBack, onEditProf
       submitLabel={edit.kind === 'remove' ? t('删除截图', 'Delete screenshot') : t('保存', 'Save')}
     >
       {edit.kind === 'remove' ? <p className={s.dialogHelp}>{t('确定删除「', 'Delete “') + edit.image.title + t('」？', '”?')}</p> : <>
-        {edit.kind === 'image' && <label className={s.field}>{t('截图名称', 'Screenshot name')}<input name="title" required maxLength={120} defaultValue={edit.image.title} /></label>}
-        <label className={s.field}>{t('分组名称', 'Group name')}<input name="group" list="gallery-edit-groups" required maxLength={80} defaultValue={edit.kind === 'image' ? edit.image.group : edit.group} /></label>
+        {edit.kind === 'image' && <TextInput label={t('截图名称', 'Screenshot name')} name="title" required maxLength={120} defaultValue={edit.image.title} />}
+        <TextInput label={t('分组名称', 'Group name')} name="group" list="gallery-edit-groups" required maxLength={80} defaultValue={edit.kind === 'image' ? edit.image.group : edit.group} />
         <datalist id="gallery-edit-groups">{uploadSuggestions.map(value => <option key={value} value={value} label={groupLabel(value, lang)} />)}</datalist>
         {edit.kind === 'group' && <p className={s.dialogHelp}>{t('将更新本组 ', 'This will update ')}{edit.images.length}{t(' 张截图的分组。', ' screenshots in this group.')}</p>}
         {edit.kind === 'group' && edit.updated > 0 && <p className={s.dialogHelp}>{t('已完成 ', 'Already updated ')}{edit.updated}{t(' 张，保存可继续处理余下截图。', ' screenshots. Save again to continue with the remaining images.')}</p>}

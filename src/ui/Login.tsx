@@ -1,12 +1,15 @@
 'use client'
 
 import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { Alert, Button, Paper, PasswordInput, Stack, TextInput, Title } from '@mantine/core'
+import { ArrowLeft } from 'lucide-react'
 import type { User } from '../shared/contract'
 import { localizeMessage } from '../shared/i18n'
 import { read, write } from './client'
 import { LanguageSwitch, useLanguage } from './i18n'
+import { ThemeSwitch } from './StudioAppearance'
 import { Brand, errorText } from './student/Chrome'
-import s from './student/student.module.css'
+import s from './Login.module.css'
 
 export default function Login({ teacher }: { teacher: boolean }) {
   const { t, lang } = useLanguage()
@@ -58,60 +61,76 @@ export default function Login({ teacher }: { teacher: boolean }) {
   return (
     <main className={s.login}>
       <header className={s.topbar}>
-        <Brand teacher={teacher} />
+        <Brand teacher={teacher} href={teacher ? '/login' : '/'} className={s.brand} />
         <div className={s.headerLinks}>
           <LanguageSwitch />
-          {!teacher && <a className={s.topLink} href="/">{t('返回首页', 'Home')}</a>}
+          <ThemeSwitch />
+          {!teacher && (
+            <Button component="a" href="/" variant="subtle" size="compact-sm" leftSection={<ArrowLeft size={15} aria-hidden />}>
+              {t('返回首页', 'Home')}
+            </Button>
+          )}
         </div>
       </header>
-      <form onSubmit={submit} className={s.loginForm}>
-        <h1>{teacher ? t('教师登录', 'Teacher sign-in') : t('学生登录', 'Student sign-in')}</h1>
-        <label className={s.field}>
-          {t('账号', 'Username')}
-          <input
-            autoComplete="username"
-            autoCapitalize="none"
-            spellCheck={false}
-            name="username"
-            value={username}
-            required
-            onInvalid={(e) => e.currentTarget.setCustomValidity(t('请输入账号。', 'Enter your username.'))}
-            onChange={(e) => { e.currentTarget.setCustomValidity(''); setUsername(e.target.value) }}
-          />
-        </label>
-        <label className={s.field}>
-          {t('密码', 'Password')}
-          <input
-            type="password"
-            autoComplete="current-password"
-            name="password"
-            value={password}
-            required
-            onInvalid={(e) => e.currentTarget.setCustomValidity(t('请输入密码。', 'Enter your password.'))}
-            onChange={(e) => { e.currentTarget.setCustomValidity(''); setPassword(e.target.value) }}
-          />
-        </label>
-        {error && (
-          <p className={s.failure} role="alert">
-            {localizeMessage(error, lang)}
-          </p>
-        )}
-        <button type="submit" className={s.primary} disabled={pending !== null}>
-          {pending === 'password' ? t('登录中…', 'Signing in…') : t('登录', 'Sign in')}
-        </button>
-        <fieldset className={s.exampleAccounts} disabled={pending !== null}>
-          <legend>{t('使用示例账号', 'Try a demo account')}</legend>
-          <div className={s.exampleChoices}>
-            {([1, 2] as const).map((slot) => {
-              const letter = slot === 1 ? 'A' : 'B'
-              const label = teacher ? t('示例教师 ', 'Demo teacher ') : t('示例学生 ', 'Demo student ')
-              return <button key={slot} type="button" onClick={() => void signIn(slot)}>
-                {pending === slot ? t('登录中…', 'Signing in…') : label + letter}
-              </button>
-            })}
-          </div>
-        </fieldset>
-      </form>
+      <div className={s.center}>
+        <Paper className={s.loginForm} withBorder>
+          <Title order={1} className={s.title}>{teacher ? t('教师登录', 'Teacher sign-in') : t('学生登录', 'Student sign-in')}</Title>
+          <form onSubmit={submit}>
+            <Stack gap="md">
+              <TextInput
+                label={t('账号', 'Username')}
+                autoComplete="username"
+                autoCapitalize="none"
+                spellCheck={false}
+                name="username"
+                value={username}
+                required
+                withAsterisk={false}
+                size="md"
+                onInvalid={(event) => event.currentTarget.setCustomValidity(t('请输入账号。', 'Enter your username.'))}
+                onChange={(event) => {
+                  event.currentTarget.setCustomValidity('')
+                  setUsername(event.target.value)
+                }}
+              />
+              <PasswordInput
+                label={t('密码', 'Password')}
+                visibilityToggleButtonProps={{ 'aria-label': t('切换密码可见性', 'Toggle password visibility') }}
+                autoComplete="current-password"
+                name="password"
+                value={password}
+                required
+                withAsterisk={false}
+                size="md"
+                onInvalid={(event) => event.currentTarget.setCustomValidity(t('请输入密码。', 'Enter your password.'))}
+                onChange={(event) => {
+                  event.currentTarget.setCustomValidity('')
+                  setPassword(event.target.value)
+                }}
+              />
+              {error && <Alert color="red" role="alert">{localizeMessage(error, lang)}</Alert>}
+              <Button type="submit" size="md" disabled={pending !== null} loading={pending === 'password'}>
+                {pending === 'password' ? t('登录中…', 'Signing in…') : t('登录', 'Sign in')}
+              </Button>
+            </Stack>
+            <fieldset className={s.exampleAccounts} disabled={pending !== null}>
+              <legend>{t('使用示例账号', 'Try a demo account')}</legend>
+              <div className={s.exampleChoices}>
+                {([1, 2] as const).map((slot) => {
+                  const letter = slot === 1 ? 'A' : 'B'
+                  const label = teacher ? t('示例教师 ', 'Demo teacher ') : t('示例学生 ', 'Demo student ')
+                  return (
+                    <Button key={slot} type="button" variant="outline" size="sm" loading={pending === slot}
+                      disabled={pending !== null} onClick={() => void signIn(slot)}>
+                      {pending === slot ? t('登录中…', 'Signing in…') : label + letter}
+                    </Button>
+                  )
+                })}
+              </div>
+            </fieldset>
+          </form>
+        </Paper>
+      </div>
     </main>
   )
 }

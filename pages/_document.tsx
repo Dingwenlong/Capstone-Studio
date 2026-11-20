@@ -1,13 +1,23 @@
 import Document, { Html, Head, Main, NextScript, type DocumentContext } from 'next/document'
+import { ColorSchemeScript, mantineHtmlProps } from '@mantine/core'
 import { languageFromCookie, type Language } from '../src/shared/i18n'
-export default class ClassroomDocument extends Document<{ lang: Language }> {
+import { studioThemeFromCookie, type StudioThemeId } from '../src/shared/studio-theme'
+
+export default class ClassroomDocument extends Document<{ lang: Language; studioTheme: StudioThemeId }> {
   static async getInitialProps(ctx: DocumentContext) {
-    return { ...(await Document.getInitialProps(ctx)), lang: languageFromCookie(ctx.req?.headers.cookie) }
+    const cookies = ctx.req?.headers.cookie
+    return {
+      ...(await Document.getInitialProps(ctx)),
+      lang: languageFromCookie(cookies),
+      studioTheme: studioThemeFromCookie(cookies),
+    }
   }
   render() {
     return (
-      <Html lang={this.props.lang}>
-        <Head />
+      <Html lang={this.props.lang} data-studio-theme={this.props.studioTheme} {...mantineHtmlProps}>
+        <Head>
+          <ColorSchemeScript forceColorScheme="light" />
+        </Head>
         <body>
           <Main />
           <NextScript />

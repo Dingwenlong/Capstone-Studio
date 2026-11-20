@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Badge, Button, NativeSelect, Table, TextInput } from '@mantine/core'
 import { Plus } from 'lucide-react'
 import type { Student } from '../../shared/contract'
 import { read, write } from '../client'
@@ -77,15 +78,14 @@ export default function Students({ demo }: { demo: boolean }) {
     <>
       <div className={s.heading}>
         <h1>{t('学生账号', 'Student accounts')}</h1>
-        <button className={s.primary} onClick={() => open({ kind: 'create' })}>
-          <Plus size={17} aria-hidden />
+        <Button onClick={() => open({ kind: 'create' })} leftSection={<Plus size={17} aria-hidden />} >
           {t('新建账号', 'New account')}
-        </button>
+        </Button>
       </div>
       <Notice feedback={feedback} />
       <div className={s.toolRow}>
         <SearchBox label={t('搜索姓名或账号', 'Search names or usernames')} value={query} set={setQuery} />
-        <select
+        <NativeSelect
           className={s.filter}
           value={filter}
           aria-label={t('账号状态', 'Account status')}
@@ -94,49 +94,49 @@ export default function Students({ demo }: { demo: boolean }) {
           <option value="all">{t('全部状态', 'All statuses')}</option>
           <option value="active">{t('已启用', 'Active')}</option>
           <option value="inactive">{t('已停用', 'Disabled')}</option>
-        </select>
+        </NativeSelect>
       </div>
       {error || !data ? (
         <Loading error={error} retry={reload} />
       ) : (
         <div className={s.tableBox}>
-          <table className={s.table}>
-            <thead>
-              <tr>
-                <th>{t('姓名', 'Name')}</th>
-                <th>{t('账号', 'Username')}</th>
-                <th>{t('状态', 'Status')}</th>
-                <th>{t('操作', 'Actions')}</th>
-              </tr>
-            </thead>
-            <tbody>
+          <Table className={s.table}>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>{t('姓名', 'Name')}</Table.Th>
+                <Table.Th>{t('账号', 'Username')}</Table.Th>
+                <Table.Th>{t('状态', 'Status')}</Table.Th>
+                <Table.Th>{t('操作', 'Actions')}</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
               {list.map((student) => (
-                <tr key={student.id}>
-                  <td>{studentName(student, lang, demo)}</td>
-                  <td className={s.mono}>{student.username}</td>
-                  <td>
-                    <span className={student.active ? s.online : s.offline}>
+                <Table.Tr key={student.id}>
+                  <Table.Td>{studentName(student, lang, demo)}</Table.Td>
+                  <Table.Td className={s.mono}>{student.username}</Table.Td>
+                  <Table.Td>
+                    <Badge tt="none" fw={500} variant="light" color={student.active ? 'pine' : 'gray'} className={student.active ? s.online : s.offline}>
                       {student.active ? t('已启用', 'Active') : t('已停用', 'Disabled')}
-                    </span>
-                  </td>
-                  <td>
+                    </Badge>
+                  </Table.Td>
+                  <Table.Td>
                     {student.fixedDemo ? (
                       <span className={s.subtle}>{t('示例按钮登录', 'One-click demo sign-in')}</span>
                     ) : (
                       <div className={s.cellActions}>
-                        <button className={s.textButton} onClick={() => open({ kind: 'password', student })}>
+                        <Button variant="subtle" size="compact-sm" onClick={() => open({ kind: 'password', student })}>
                           {t('重置密码', 'Reset password')}
-                        </button>
-                        <button className={s.textButton} onClick={() => open({ kind: 'active', student })}>
+                        </Button>
+                        <Button variant="subtle" size="compact-sm" onClick={() => open({ kind: 'active', student })}>
                           {student.active ? t('停用', 'Disable') : t('启用', 'Enable')}
-                        </button>
+                        </Button>
                       </div>
                     )}
-                  </td>
-                </tr>
+                  </Table.Td>
+                </Table.Tr>
               ))}
-            </tbody>
-          </table>
+            </Table.Tbody>
+          </Table>
           {!list.length && (
             <p className={s.empty}>
               {data.length
@@ -150,13 +150,9 @@ export default function Students({ demo }: { demo: boolean }) {
         <Dialog title={dialogTitle} close={() => setEdit(null)} submit={save} submitLabel={submitLabel}>
           {edit.kind === 'create' ? (
             <>
-              <label className={s.field}>
-                {t('姓名', 'Name')}
-                <input name="name" required maxLength={80} autoFocus autoComplete="off" />
-              </label>
-              <label className={s.field}>
-                {t('登录账号', 'Username')}
-                <input
+              <TextInput label={t('姓名', 'Name')} name="name" required maxLength={80} autoFocus autoComplete="off" />
+                <TextInput
+                  label={t('登录账号', 'Username')}
                   name="username"
                   required
                   minLength={2}
@@ -170,7 +166,6 @@ export default function Students({ demo }: { demo: boolean }) {
                   autoCapitalize="none"
                   spellCheck={false}
                 />
-              </label>
             </>
           ) : (
             <p className={s.dialogHelp}>
@@ -178,9 +173,8 @@ export default function Students({ demo }: { demo: boolean }) {
             </p>
           )}
           {edit.kind !== 'active' ? (
-            <label className={s.field}>
-              {edit.kind === 'password' ? t('新密码', 'New password') : t('初始密码', 'Initial password')}
-              <input
+              <TextInput
+                label={edit.kind === 'password' ? t('新密码', 'New password') : t('初始密码', 'Initial password')}
                 name="password"
                 type="password"
                 required
@@ -190,7 +184,6 @@ export default function Students({ demo }: { demo: boolean }) {
                 autoComplete="new-password"
                 autoFocus={edit.kind === 'password'}
               />
-            </label>
           ) : (
             <p className={s.dialogHelp}>
               {edit.student.active

@@ -4,15 +4,21 @@ import Login from '../src/ui/Login'
 import { Landing, Workspace } from '../src/ui/student'
 import Admin from '../src/ui/teacher'
 import { languageFromCookie, type Language } from '../src/shared/i18n'
+import { studioThemeFromCookie, type StudioThemeId } from '../src/shared/studio-theme'
 import { useLanguage } from '../src/ui/i18n'
 import { hostKey } from '../src/server/hosts'
 
-type Props = { host: string; path: string; lang: Language }
+type Props = { host: string; path: string; lang: Language; studioTheme: StudioThemeId }
 export const getServerSideProps: GetServerSideProps<Props> = async ({ req, resolvedUrl }) => {
   const host = hostKey(req.headers.host)
   if (host !== 'portal' && host !== 'admin') return { notFound: true }
   return {
-    props: { host, path: resolvedUrl.split('?')[0], lang: languageFromCookie(req.headers.cookie) },
+    props: {
+      host,
+      path: resolvedUrl.split('?')[0],
+      lang: languageFromCookie(req.headers.cookie),
+      studioTheme: studioThemeFromCookie(req.headers.cookie),
+    },
   }
 }
 export default function Screen({ host, path }: Props) {

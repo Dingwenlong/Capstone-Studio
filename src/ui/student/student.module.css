@@ -63,11 +63,15 @@
   min-height: 100svh;
 }
 .landing {
-  background: #0e1114 url('/hero.webp') no-repeat center center/cover;
-  color: #fff;
+  background: var(--studio-hero-bg, #0e1114) url('/hero.webp') no-repeat center center/cover;
+  color: var(--studio-hero-text, #fffdf8);
   isolation: isolate;
   display: flex;
   align-items: center;
+}
+.landing :focus-visible {
+  outline: 3px solid var(--studio-hero-text, #fffdf8);
+  outline-offset: 4px;
 }
 .topbar {
   position: absolute;
@@ -87,6 +91,10 @@
   display: flex;
   align-items: center;
   gap: clamp(14px, 2.5vw, 34px);
+  min-width: 0;
+  max-width: 100%;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 .heroCopy:lang(en) {
   max-width: 55vw;
@@ -606,7 +614,7 @@
   }
   .heroCopy:lang(en) { max-width: 86vw; }
   .topbar { flex-wrap: wrap; gap: 10px 20px; }
-  .headerLinks { gap: 12px; margin-left: auto; }
+  .headerLinks { gap: 6px 12px; margin-left: auto; }
   .heroCopy p {
     font-size: 16px;
     max-width: 21em;

@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState, type FormEvent } from 'react'
+import { Button, Checkbox, UnstyledButton } from '@mantine/core'
 import type { Student, SystemInfo } from '../../shared/contract'
 import { read, write } from '../client'
 import { useLanguage } from '../i18n'
@@ -77,25 +78,26 @@ function GrantForm({
     <form onSubmit={submit}>
       <div className={s.choices}>
         {systems.map((item) => (
-          <label className={s.choice} key={item.key}>
-            <input
-              type="checkbox"
+          <div className={s.choice} key={item.key}>
+            <Checkbox
+              label={systemName(item, lang)}
+              aria-label={systemName(item, lang)}
+              className={s.accessCheckbox}
               checked={keys.has(item.key)}
               disabled={pending}
               onChange={(e) => change(item.key, e.target.checked)}
             />
-            <span>{systemName(item, lang)}</span>
             {!item.enabled && <span className={s.inactive}>{t('已下架', 'Unpublished')}</span>}
-          </label>
+          </div>
         ))}
         {!systems.length && (
           <p className={s.empty}>{t('请先登记演示系统。', 'Register a demo system first.')}</p>
         )}
       </div>
       <div className={s.grantFooter}>
-        <button type="submit" className={s.primary} disabled={pending || !systems.length}>
+        <Button type="submit" loading={pending} disabled={pending || !systems.length}>
           {pending ? t('保存中…', 'Saving…') : t('保存授权', 'Save access')}
-        </button>
+        </Button>
       </div>
       {feedback && (
         <div className={s.grantFeedback}>
@@ -167,7 +169,7 @@ export default function Grants({ demo }: { demo: boolean }) {
             </div>
             <div className={s.people}>
               {visible.map((student) => (
-                <button
+                <UnstyledButton
                   key={student.id}
                   className={s.person}
                   disabled={saving}
@@ -179,7 +181,7 @@ export default function Grants({ demo }: { demo: boolean }) {
                   {data.students.some((other) => other.id !== student.id && other.name === student.name) && (
                     <span className={s.accountHint}>{student.username}</span>
                   )}
-                </button>
+                </UnstyledButton>
               ))}
               {!visible.length && (
                 <p className={s.empty}>

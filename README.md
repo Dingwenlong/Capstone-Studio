@@ -4,6 +4,8 @@
 
 首次进入默认显示英文。学生首页和两个登录页均可直接选择「简体中文」或「English」。语言选择会保留至下次访问，并用于工作台、教师后台、图片预览和操作反馈。系统资料支持中文及英文名称、简介，自定义截图名称和分组沿用老师填写的内容。
 
+页面顶部的调色盘可切换「纸白与松绿」「墨蓝」「石墨青柠」和「炭灰靛紫」。首次默认使用「纸白与松绿」，同一个浏览器里的学生端和教师端共享主题选择。
+
 每个登录页有两个免输密码的示例按钮。示例学生 A 初始可查看图书借阅与实验室预约相册，示例学生 B 初始只可查看实验室预约相册。两位示例教师共用同一套示例账号、授权和截图。示例操作保存在独立空间，正式授课使用老师分配的账号和密码。示例登录也使用一次性请求编号。首次使用时自动初始化示例数据，本机使用独立 PGlite 目录，PostgreSQL 使用独立 schema。新相册显示实际截图数量，等待老师上传后即可浏览。
 
 ## 本机使用
@@ -196,6 +198,6 @@ npm run test:e2e
 
 Windows 下可直接执行 `.\classroom.ps1 check`、`.\classroom.ps1 test` 和 `.\classroom.ps1 build`。如本机已安装 Chrome，PowerShell 可设置 `$env:CHROMIUM_CHANNEL='chrome'`，随后运行 `.\classroom.ps1 browser`。脚本直接调用 Node，可以在 Windows 环境变量较长时使用。测试运行器创建临时数据库，使用随机账户密码，启动独立服务进程，完成后正常关闭。可设置 `CLASSROOM_TEST_PORT` 和 `CLASSROOM_QA_OUTPUT` 选择测试端口及截图位置。存储测试默认使用 PGlite，`CLASSROOM_TEST_DATABASE_URL` 可指向专用的空 PostgreSQL 测试库。
 
-开发运行 `npm run dev`，生产构建后运行 `npm start`。学生门户、教师后台使用 Next.js Pages Router、React 和 Tailwind。tRPC 处理查询和写入，Drizzle 连接 PGlite 或 PostgreSQL，Sharp 生成截图展示图和缩略图，Better Auth 的密码组件处理哈希和校验。会话、请求编号和旧版启动票据由网关与数据库管理。浏览器验收覆盖图库上传、分组、排序、删除、学生访问隔离与撤权。
+开发运行 `npm run dev`，生产构建后运行 `npm start`。学生门户和教师后台使用 Next.js Pages Router、React、Mantine 和 Tailwind。tRPC 处理查询和写入，Drizzle 连接 PGlite 或 PostgreSQL，Sharp 生成截图展示图和缩略图，Better Auth 的密码组件处理哈希和校验。会话、请求编号和旧版启动票据由网关与数据库管理。浏览器验收覆盖图库上传、分组、排序、删除、学生访问隔离与撤权。
 
 登录和写操作先领取绑定主机、当前会话与操作的 `X-Request-ID`，有效期 5 分钟。登录前绑定匿名会话，图片上传和资料管理在同一个事务里核销编号并写入数据。旧版启动票据绑定目标系统，有效期 30 秒，通过 POST 兑换。学生退出、停用、重置密码或被撤权后，关联会话按对应范围失效。图片接口通过会话和逐系统授权校验，并返回 `private, no-store` 缓存策略。

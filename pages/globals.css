@@ -1,4 +1,11 @@
+@layer theme, base, mantine, components, utilities;
 @import 'tailwindcss';
+
+:root {
+  --studio-radius: 10px;
+  --studio-header-height: 64px;
+  --studio-rail-width: 236px;
+}
 * {
   box-sizing: border-box;
 }
@@ -12,14 +19,9 @@ html {
   color-scheme: light;
 }
 body {
-  color: #191b1f;
-  background: #f9fafb;
-  font-family: 'Inter', 'Segoe UI', 'Microsoft YaHei UI', 'Microsoft YaHei', system-ui, sans-serif;
-}
-button,
-input,
-select {
-  font: inherit;
+  color: var(--studio-text);
+  background: var(--studio-bg);
+  font-family: var(--mantine-font-family);
 }
 button,
 a,
@@ -33,11 +35,8 @@ label[for] {
   cursor: pointer;
 }
 :focus-visible {
-  outline: 3px solid #698b18;
+  outline: 2px solid var(--studio-focus);
   outline-offset: 3px;
-}
-button:disabled {
-  cursor: wait;
 }
 @media (prefers-reduced-motion: reduce) {
   *,

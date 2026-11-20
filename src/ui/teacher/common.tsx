@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
-import { Check, CircleAlert, Search, X } from 'lucide-react'
+import { Alert, Button, Group, Loader, Modal, Stack, Text, TextInput } from '@mantine/core'
+import { Check, CircleAlert, Search } from 'lucide-react'
 import type { Student } from '../../shared/contract'
 import { displayLabel, localizeMessage } from '../../shared/i18n'
 import { useLanguage } from '../i18n'
@@ -63,43 +64,44 @@ export function Notice({ feedback }: { feedback: Feedback }) {
   if (!feedback) return null
   const text = feedback.en ? t(feedback.text, feedback.en) : localizeMessage(feedback.text, lang)
   return (
-    <p className={feedback.error ? s.error : s.notice} role={feedback.error ? 'alert' : 'status'}>
-      {feedback.error ? <CircleAlert size={17} aria-hidden /> : <Check size={17} aria-hidden />}
+    <Alert
+      color={feedback.error ? 'red' : 'pine'}
+      variant="light"
+      role={feedback.error ? 'alert' : 'status'}
+      icon={feedback.error ? <CircleAlert size={18} /> : <Check size={18} />}
+      className={s.notice}
+    >
       {text}
-    </p>
+    </Alert>
   )
 }
 
 export function Loading({ error, retry }: { error: string; retry: () => void }) {
   const { t } = useLanguage()
-  if (!error)
-    return (
-      <p className={s.empty} role="status">
-        {t('正在加载…', 'Loading…')}
-      </p>
-    )
+  if (!error) return (
+    <Group className={s.empty} role="status" gap="sm">
+      <Loader size="sm" /><Text size="sm">{t('正在加载…', 'Loading…')}</Text>
+    </Group>
+  )
   return (
-    <div>
+    <Stack gap="sm" align="flex-start">
       <Notice feedback={{ text: error, error: true }} />
-      <button className={s.secondary} onClick={retry}>
-        {t('重试', 'Try again')}
-      </button>
-    </div>
+      <Button variant="outline" onClick={retry}>{t('重试', 'Try again')}</Button>
+    </Stack>
   )
 }
 
 export function SearchBox({ value, set, label }: { value: string; set: (v: string) => void; label: string }) {
   return (
-    <label className={s.search}>
-      <Search size={18} strokeWidth={1.7} aria-hidden />
-      <input
-        aria-label={label}
-        type="search"
-        value={value}
-        onChange={(e) => set(e.target.value)}
-        placeholder={label}
-      />
-    </label>
+    <TextInput
+      className={s.search}
+      type="search"
+      aria-label={label}
+      placeholder={label}
+      value={value}
+      onChange={event => set(event.currentTarget.value)}
+      leftSection={<Search size={18} strokeWidth={1.7} aria-hidden />}
+    />
   )
 }
 
@@ -124,15 +126,32 @@ export function Dialog({
   children: ReactNode
 }) {
   const { t } = useLanguage()
-  const dialog = useRef<HTMLDialogElement>(null)
   const lock = useRef(false)
   const [working, setWorking] = useState(false)
   const [error, setError] = useState('')
+  const [focusOrigin] = useState(() => ({
+    element: typeof document !== 'undefined' && document.activeElement instanceof HTMLElement
+      ? document.activeElement : null,
+    url: typeof window !== 'undefined' ? window.location.href : '',
+  }))
+  const mounted = useRef(false)
   useEffect(() => {
-    const el = dialog.current
-    el?.showModal()
-    return () => el?.close()
-  }, [])
+    mounted.current = true
+    return () => {
+      mounted.current = false
+      // These dialogs unmount on close, so Mantine never receives opened=false.
+      queueMicrotask(() => {
+        const target = focusOrigin.element
+        if (mounted.current || !target?.isConnected || window.location.href !== focusOrigin.url ||
+          target.matches(':disabled, [aria-disabled="true"]') ||
+          target.closest('[inert]') || target.getClientRects().length === 0) return
+        const active = document.activeElement
+        if (active && active !== document.body && active !== document.documentElement &&
+          active !== target && active.isConnected) return
+        target.focus({ preventScroll: true })
+      })
+    }
+  }, [focusOrigin])
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
     if (lock.current || !canSubmit) return
@@ -151,40 +170,31 @@ export function Dialog({
     }
   }
   return (
-    <dialog
-      ref={dialog}
-      className={s.dialog}
-      aria-labelledby="teacher-dialog-title"
-      onCancel={(e) => {
-        e.preventDefault()
-        if (!working) close()
-      }}
+    <Modal
+      opened
+      centered
+      returnFocus={false}
+      title={title}
+      onClose={() => { if (!working) close() }}
+      closeOnClickOutside={false}
+      closeOnEscape={!working}
+      closeButtonProps={{ disabled: working, 'aria-label': t('关闭', 'Close') }}
+      classNames={{ content: s.modalContent, header: s.modalHeader, title: s.modalTitle }}
+      size="md"
     >
-      <div className={s.dialogHead}>
-        <h2 id="teacher-dialog-title">{title}</h2>
-        <button
-          className={s.close}
-          type="button"
-          onClick={close}
-          disabled={working}
-          aria-label={t('关闭', 'Close')}
-        >
-          <X size={20} />
-        </button>
-      </div>
       <form onSubmit={onSubmit}>
-        <div className={s.fields}>{children}</div>
+        <Stack gap="md">{children}</Stack>
         {error && <Notice feedback={{ text: error, error: true }} />}
-        <div className={s.dialogActions}>
-          <button type="button" className={s.secondary} disabled={working} onClick={close}>
+        <Group justify="flex-end" mt="lg" gap="sm">
+          <Button variant="default" type="button" onClick={close} disabled={working}>
             {t('取消', 'Cancel')}
-          </button>
-          <button className={s.primary} type="submit" disabled={working || !canSubmit}>
+          </Button>
+          <Button type="submit" loading={working} disabled={working || !canSubmit}>
             {working ? t('提交中…', 'Submitting…') : submitLabel}
-          </button>
-        </div>
+          </Button>
+        </Group>
       </form>
-    </dialog>
+    </Modal>
   )
 }
 

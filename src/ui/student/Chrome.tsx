@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react'
+import { BookOpen, GraduationCap } from 'lucide-react'
 import { useLanguage } from '../i18n'
 import s from './student.module.css'
 
@@ -73,11 +74,11 @@ export function Icon({ name, size = 20 }: { name: Glyph; size?: number }) {
   )
 }
 
-export function Brand({ teacher = false, href = '/' }: { teacher?: boolean; href?: string }) {
+export function Brand({ teacher = false, href = '/', className }: { teacher?: boolean; href?: string; className?: string }) {
   const { t } = useLanguage()
   return (
-    <a className={s.brand} href={href}>
-      <span className={s.mark} aria-hidden="true" />
+    <a className={[s.brand, className].filter(Boolean).join(' ')} href={href}>
+      {teacher ? <GraduationCap size="1.28em" strokeWidth={1.7} aria-hidden /> : <BookOpen size="1.24em" strokeWidth={1.7} aria-hidden />}
       {teacher ? t('教学管理', 'Teacher admin') : t('程序研习录', 'Capstone Studio')}
     </a>
   )

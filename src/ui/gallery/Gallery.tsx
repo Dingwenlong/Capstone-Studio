@@ -1,7 +1,8 @@
 'use client'
 
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight, ImageIcon, Maximize2, Minimize2, RefreshCw, X } from 'lucide-react'
+import { ActionIcon, Anchor, Button, Loader, Paper, Text, UnstyledButton } from '@mantine/core'
+import { ChevronLeft, ChevronRight, ExternalLink, ImageIcon, Maximize2, Minimize2, Monitor, RefreshCw, Smartphone, X } from 'lucide-react'
 import type { Gallery as GalleryData, Screenshot, SystemInfo } from '../../shared/contract'
 import { displayLabel, localizeMessage, type Language } from '../../shared/i18n'
 import { read } from '../client'
@@ -48,19 +49,19 @@ function Thumbnail({ image, open, refresh }: { image: Screenshot; open: () => vo
   const [failed, setFailed] = useState(false)
   const [attempt, setAttempt] = useState(0)
   const retry = () => { setFailed(false); setAttempt(value => value + 1); refresh() }
-  return <article className={s.thumbnail}>
+  return <Paper component="article" withBorder className={s.thumbnail}>
     {failed ? <div className={s.imageError}>
       <ImageIcon size={26} aria-hidden />
       <span>{t('图片暂不可用', 'Image unavailable')}</span>
-      <button className={s.textButton} onClick={retry}>{t('重试', 'Try again')}</button>
-    </div> : <button className={s.imageButton} onClick={open} aria-label={t('查看截图 ', 'View screenshot ') + image.title}>
+      <Button variant="subtle" size="compact-sm" className={s.retryButton} onClick={retry}>{t('重试', 'Try again')}</Button>
+    </div> : <UnstyledButton className={s.imageButton} onClick={open} aria-label={t('查看截图 ', 'View screenshot ') + image.title}>
       <img src={screenshotUrl(image, true) + (attempt ? '?retry=' + attempt : '')} alt={image.title}
         loading="lazy" decoding="async" width={image.width} height={image.height}
         onError={() => { setFailed(true); refresh() }} />
       <span className={s.expand}><Maximize2 size={16} aria-hidden /></span>
-    </button>}
-    <div className={s.caption}><span>{image.title}</span><small>{image.width} × {image.height}</small></div>
-  </article>
+    </UnstyledButton>}
+    <Text className={s.caption}>{image.title}</Text>
+  </Paper>
 }
 
 function ViewerDialog({ images, selectedId, onClose, onSelect }: {
@@ -104,25 +105,26 @@ function ViewerDialog({ images, selectedId, onClose, onSelect }: {
     <header className={s.viewerHeader}>
       <div><h2 id={titleId}>{image.title}</h2><p>{groupLabel(image.group, lang)} · {index + 1} / {images.length}</p></div>
       <div className={s.viewerActions}>
-        <button onClick={() => setOriginal(value => !value)} className={s.viewerButton} aria-pressed={original}
+        <Button variant="subtle" onClick={() => setOriginal(value => !value)} className={s.viewerButton} aria-pressed={original}
+          aria-label={original ? t('适应窗口', 'Fit to window') : t('原图', 'Original size')}
+          leftSection={original ? <Minimize2 size={18} aria-hidden /> : <Maximize2 size={18} aria-hidden />}
           title={original ? t('适应窗口', 'Fit to window') : t('查看原图', 'Original size')}>
-          {original ? <Minimize2 size={18} aria-hidden /> : <Maximize2 size={18} aria-hidden />}
-          <span>{original ? t('适应窗口', 'Fit to window') : t('原图', 'Original size')}</span>
-        </button>
-        <button onClick={onClose} className={s.viewerButton} aria-label={t('关闭截图', 'Close screenshot')}><X size={23} aria-hidden /></button>
+          <span className={s.viewerToggleText}>{original ? t('适应窗口', 'Fit to window') : t('原图', 'Original size')}</span>
+        </Button>
+        <ActionIcon variant="subtle" onClick={onClose} className={s.viewerButton} aria-label={t('关闭截图', 'Close screenshot')}><X size={23} aria-hidden /></ActionIcon>
       </div>
     </header>
     <div className={s.viewerImage} data-original={original}>
       {failed ? <div className={s.viewerError} role="status">
         <ImageIcon size={32} aria-hidden /><p>{t('图片暂不可用，请重试。', 'This image is unavailable. Try again.')}</p>
-        <button className={s.viewerButton} onClick={() => { setFailed(false); setAttempt(value => value + 1) }}>{t('重新加载', 'Reload')}</button>
+        <Button variant="subtle" className={s.viewerButton} onClick={() => { setFailed(false); setAttempt(value => value + 1) }}>{t('重新加载', 'Reload')}</Button>
       </div> : <img key={image.id} src={screenshotUrl(image) + (attempt ? '?retry=' + attempt : '')}
         alt={image.title} width={image.width} height={image.height} onError={() => setFailed(true)} />}
     </div>
     <footer className={s.viewerFooter}>
-      <button className={s.viewerButton} disabled={index === 0} onClick={() => move(-1)}><ChevronLeft size={20} aria-hidden />{t('上一张', 'Previous')}</button>
+      <Button variant="subtle" className={s.viewerButton} disabled={index === 0} onClick={() => move(-1)} leftSection={<ChevronLeft size={20} aria-hidden />}>{t('上一张', 'Previous')}</Button>
       <span>{image.width} × {image.height}</span>
-      <button className={s.viewerButton} disabled={index === images.length - 1} onClick={() => move(1)}>{t('下一张', 'Next')}<ChevronRight size={20} aria-hidden /></button>
+      <Button variant="subtle" className={s.viewerButton} disabled={index === images.length - 1} onClick={() => move(1)} rightSection={<ChevronRight size={20} aria-hidden />}>{t('下一张', 'Next')}</Button>
     </footer>
   </dialog>
 }
@@ -204,22 +206,28 @@ export default function Gallery({ system, visible }: { system: SystemInfo; visib
           {info.platforms.map(platform => <li key={platform}>{groupLabel(platform, lang)}</li>)}
         </ul>}
       </div>
-      {repository && <a className={s.repository} href={repository} target="_blank" rel="noopener noreferrer">
-        {t('项目源码', 'Source repository')}
-      </a>}
+      {repository && <Anchor className={s.repository} href={repository} target="_blank" rel="noopener noreferrer">
+        {t('项目源码', 'Source repository')}<ExternalLink size={15} aria-hidden />
+      </Anchor>}
     </header>
     {error ? <div className={s.state}><h2>{t('截图暂不可用', 'Screenshots unavailable')}</h2>
-      <p role="alert">{localizeMessage(error, lang)}</p><button className={s.action} onClick={refresh}><RefreshCw size={16} aria-hidden />{t('重试', 'Try again')}</button>
-    </div> : loading ? <div className={s.state} role="status">{t('正在读取截图…', 'Loading screenshots…')}</div>
+      <p role="alert">{localizeMessage(error, lang)}</p><Button onClick={refresh} leftSection={<RefreshCw size={16} aria-hidden />}>{t('重试', 'Try again')}</Button>
+    </div> : loading ? <div className={s.state} role="status"><Loader size="sm" /><Text>{t('正在读取截图…', 'Loading screenshots…')}</Text></div>
       : !images.length ? <div className={s.state}>
         <ImageIcon size={36} strokeWidth={1.3} aria-hidden />
         <h2>{t('截图待补充', 'Screenshots coming soon')}</h2>
         <p>{t('老师上传截图后，可在这里按端查看系统界面。', 'Screenshots will appear here when your teacher uploads them.')}</p>
       </div> : <>
         <div className={s.groups} role="group" aria-label={t('截图分组', 'Screenshot groups')}>
-          {groups.map(value => <button key={value} aria-pressed={group === value} onClick={() => { setGroup(value); setSelectedId(null) }}>
-            {groupLabel(value, lang)}<span>{images.filter(image => image.group === value).length}</span>
-          </button>)}
+          {groups.map(value => {
+            const GroupIcon = /android|ios|mobile|手机|移动|小程序/i.test(value) ? Smartphone : Monitor
+            return <Button key={value} variant={group === value ? 'light' : 'outline'}
+              className={s.groupButton} aria-pressed={group === value}
+              leftSection={<GroupIcon size={20} strokeWidth={1.65} aria-hidden />}
+              onClick={() => { setGroup(value); setSelectedId(null) }}>
+              {groupLabel(value, lang)}
+            </Button>
+          })}
         </div>
         <div className={s.grid}>
           {shown.map(image => <Thumbnail key={image.id} image={image} open={() => setSelectedId(image.id)} refresh={refresh} />)}

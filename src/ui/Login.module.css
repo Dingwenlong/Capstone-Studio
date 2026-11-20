@@ -1,0 +1,98 @@
+.login {
+  display: flex;
+  min-height: 100svh;
+  flex-direction: column;
+  background: var(--studio-bg);
+  color: var(--studio-text);
+}
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  min-height: var(--studio-header-height);
+  padding: 12px clamp(16px, 3.25vw, 48px);
+  border-bottom: 1px solid var(--studio-header-border);
+  background: var(--studio-header-bg);
+  color: var(--studio-header-text);
+}
+.topbar .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--studio-header-text);
+  font-size: clamp(18px, 2.2vw, 23px);
+  font-weight: 730;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  text-decoration: none;
+  white-space: nowrap;
+}
+.brand svg { flex: none; }
+.headerLinks {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  min-width: 0;
+  max-width: 100%;
+}
+.headerLinks > a {
+  color: var(--studio-header-text);
+}
+.headerLinks > a:hover {
+  background: color-mix(in srgb, var(--studio-header-text) 8%, transparent);
+}
+.center {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  padding: clamp(32px, 8vh, 80px) 16px;
+}
+.loginForm {
+  width: min(100%, 440px);
+  padding: clamp(22px, 5vw, 38px);
+  background: var(--studio-surface);
+  border-color: var(--studio-border);
+  color: var(--studio-text);
+  box-shadow: 0 16px 44px -34px color-mix(in srgb, var(--studio-text) 32%, transparent);
+}
+.title {
+  margin-bottom: 26px;
+  color: var(--studio-ink);
+  font-size: clamp(27px, 4vw, 32px);
+  letter-spacing: -0.036em;
+}
+.exampleAccounts {
+  min-width: 0;
+  margin: 24px 0 0;
+  padding: 11px 0 0;
+  border: 0;
+  border-top: 1px solid var(--studio-border);
+}
+.exampleAccounts legend {
+  padding-right: 10px;
+  color: var(--studio-muted);
+  font-size: 13px;
+  font-weight: 600;
+}
+.exampleChoices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.login :focus-visible {
+  outline: 3px solid var(--studio-focus);
+  outline-offset: 3px;
+}
+.topbar :focus-visible {
+  outline-color: var(--studio-header-text);
+}
+@media (max-width: 480px) {
+  .headerLinks { margin-left: auto; column-gap: 10px; row-gap: 6px; }
+}
+@media (max-width: 340px) {
+  .exampleChoices { grid-template-columns: 1fr; }
+}

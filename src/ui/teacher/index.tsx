@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import Head from 'next/head'
-import { List, LogOut, PanelsTopLeft, ShieldCheck, UserRound } from 'lucide-react'
+import { Box, Button, Group, NavLink } from '@mantine/core'
+import { ClipboardList, GraduationCap, KeyRound, LogOut, Monitor, Users } from 'lucide-react'
 import type { User } from '../../shared/contract'
 import { displayLabel } from '../../shared/i18n'
 import { read, write } from '../client'
 import { LanguageSwitch, useLanguage } from '../i18n'
+import { ThemeSwitch } from '../StudioAppearance'
 import Audit from './Audit'
 import Grants from './Grants'
 import Students from './Students'
@@ -13,10 +15,10 @@ import { message, Notice, type Feedback } from './common'
 import s from './Teacher.module.css'
 
 const sections = [
-  { id: 'students', label: '学生账号', en: 'Student accounts', Icon: UserRound, Page: Students },
-  { id: 'systems', label: '演示系统', en: 'Demo systems', Icon: PanelsTopLeft, Page: Systems },
-  { id: 'grants', label: '系统授权', en: 'System access', Icon: ShieldCheck, Page: Grants },
-  { id: 'audit', label: '操作记录', en: 'Activity log', Icon: List, Page: Audit },
+  { id: 'students', label: '学生账号', en: 'Student accounts', Icon: Users, Page: Students },
+  { id: 'systems', label: '演示系统', en: 'Demo systems', Icon: Monitor, Page: Systems },
+  { id: 'grants', label: '系统授权', en: 'System access', Icon: KeyRound, Page: Grants },
+  { id: 'audit', label: '操作记录', en: 'Activity log', Icon: ClipboardList, Page: Audit },
 ]
 
 export default function Admin({ section }: { section: string }) {
@@ -74,37 +76,48 @@ export default function Admin({ section }: { section: string }) {
     }
   }
   return (
-    <div className={s.shell} lang={lang}>
+    <Box className={s.shell} lang={lang}>
       <Head>
         <title>
           {t(entry.label, entry.en)} · {t('教学管理', 'Teacher admin')}
         </title>
       </Head>
-      <aside className={s.rail}>
+      <header className={s.header}>
         <div className={s.brand}>
-          <span className={s.mark} aria-hidden />
+          <GraduationCap size={34} strokeWidth={1.7} aria-hidden />
           {t('教学管理', 'Teacher admin')}
         </div>
+        <Group gap="lg" className={s.headerTools}>
+          <LanguageSwitch className={s.languageSwitch} />
+          <ThemeSwitch />
+          <Button
+            className={s.logout}
+            variant="subtle"
+            type="button"
+            onClick={logout}
+            disabled={leaving}
+            leftSection={<LogOut size={20} strokeWidth={1.7} aria-hidden />}
+          >
+            {leaving ? t('退出中…', 'Signing out…') : t('退出', 'Sign out')}
+          </Button>
+        </Group>
+      </header>
+      <aside className={s.rail}>
         <nav className={s.nav} aria-label={t('教师管理', 'Teacher navigation')}>
           {sections.map(({ id, label, en, Icon }) => (
-            <a
+            <NavLink
               key={id}
+              component="a"
               className={s.navLink}
               href={`/admin/${id}`}
+              active={entry.id === id}
               aria-current={entry.id === id ? 'page' : undefined}
-            >
-              <Icon className={s.navIcon} strokeWidth={1.7} aria-hidden />
-              {t(label, en)}
-            </a>
+              label={t(label, en)}
+              leftSection={<Icon size={21} strokeWidth={1.7} aria-hidden />}
+              variant="light"
+            />
           ))}
         </nav>
-        <div className={s.accountTools}>
-          <LanguageSwitch className={s.languageSwitch} />
-          <button className={s.logout} type="button" onClick={logout} disabled={leaving}>
-            <LogOut className={s.navIcon} strokeWidth={1.7} aria-hidden />
-            {leaving ? t('退出中…', 'Signing out…') : t('退出', 'Sign out')}
-          </button>
-        </div>
       </aside>
       <main className={s.main}>
         {teacher?.demo && (
@@ -122,15 +135,15 @@ export default function Admin({ section }: { section: string }) {
             demo={teacher.demo === true}
           />
         ) : feedback ? (
-          <button className={s.secondary} onClick={() => window.location.reload()}>
+          <Button variant="outline" onClick={() => window.location.reload()}>
             {t('重试', 'Try again')}
-          </button>
+          </Button>
         ) : (
           <p role="status" className={s.empty}>
             {t('正在加载…', 'Loading…')}
           </p>
         )}
       </main>
-    </div>
+    </Box>
   )
 }

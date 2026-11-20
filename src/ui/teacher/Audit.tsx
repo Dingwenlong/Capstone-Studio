@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Button, NativeSelect, Table } from '@mantine/core'
 import { RefreshCw } from 'lucide-react'
 import type { Audit as Event } from '../../shared/contract'
 import { read } from '../client'
@@ -72,10 +73,9 @@ export default function Audit() {
     <>
       <div className={s.heading}>
         <h1>{t('操作记录', 'Activity log')}</h1>
-        <button className={s.secondary} onClick={reload}>
-          <RefreshCw size={16} aria-hidden />
+        <Button variant="outline" onClick={reload} leftSection={<RefreshCw size={16} aria-hidden />} >
           {t('刷新', 'Refresh')}
-        </button>
+        </Button>
       </div>
       <div className={s.toolRow}>
         <SearchBox
@@ -83,7 +83,7 @@ export default function Audit() {
           value={query}
           set={setQuery}
         />
-        <select
+        <NativeSelect
           className={s.filter}
           aria-label={t('操作类型', 'Action type')}
           value={action}
@@ -95,35 +95,35 @@ export default function Audit() {
               {actionName(id)}
             </option>
           ))}
-        </select>
+        </NativeSelect>
         <span className={s.subtle}>{t('最近 150 条', 'Latest 150 entries')}</span>
       </div>
       {error || !data ? (
         <Loading error={error} retry={reload} />
       ) : (
         <div className={s.tableBox}>
-          <table className={s.table}>
-            <thead>
-              <tr>
-                <th>{t('时间', 'Time')}</th>
-                <th>{t('操作账号', 'Account')}</th>
-                <th>{t('操作', 'Action')}</th>
-                <th>{t('对象或详情', 'Target or details')}</th>
-              </tr>
-            </thead>
-            <tbody>
+          <Table className={s.table}>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>{t('时间', 'Time')}</Table.Th>
+                <Table.Th>{t('操作账号', 'Account')}</Table.Th>
+                <Table.Th>{t('操作', 'Action')}</Table.Th>
+                <Table.Th>{t('对象或详情', 'Target or details')}</Table.Th>
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
               {events.map((item) => (
-                <tr key={item.id}>
-                  <td>
+                <Table.Tr key={item.id}>
+                  <Table.Td>
                     <time dateTime={item.at}>{formatDate(item.at, lang)}</time>
-                  </td>
-                  <td className={s.mono}>{item.actor}</td>
-                  <td>{actionName(item.action)}</td>
-                  <td>{detailText(item, lang) || '—'}</td>
-                </tr>
+                  </Table.Td>
+                  <Table.Td className={s.mono}>{item.actor}</Table.Td>
+                  <Table.Td>{actionName(item.action)}</Table.Td>
+                  <Table.Td>{detailText(item, lang) || '—'}</Table.Td>
+                </Table.Tr>
               ))}
-            </tbody>
-          </table>
+            </Table.Tbody>
+          </Table>
           {!events.length && (
             <p className={s.empty}>
               {data.length
